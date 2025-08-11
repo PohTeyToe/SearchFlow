@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  dbt-compile:
+    name: dbt Compile & Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install dbt-duckdb==1.7.0
+          pip install sqlfluff
+      
+      - name: Install dbt packages
+        working-directory: ./dbt_transform
+        run: dbt deps
+      
+      - name: Compile dbt models
+        working-directory: ./dbt_transform
+        run: dbt compile --profiles-dir .
+      
+      - name: Lint SQL with sqlfluff (warnings only)
+        working-directory: ./dbt_transform
+        run: sqlfluff lint models/ --dialect duckdb || true
+        continue-on-error: true
+
+  python-lint:
+    name: Python Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install linters
+        run: pip install ruff
+      
+      - name: Lint Python code
+        run: ruff check event_generator/ reverse_etl/ scripts/ --ignore E501
+        continue-on-error: true

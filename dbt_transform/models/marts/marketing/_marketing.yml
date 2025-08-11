@@ -1,0 +1,100 @@
+version: 2
+
+models:
+  - name: mart_user_segments
+    description: |
+      User segmentation for marketing automation.
+      This model is synced to CRM via Reverse-ETL.
+    
+    config:
+      tags: ['reverse-etl', 'marketing']
+    
+    columns:
+      - name: user_id
+        description: "Unique user identifier"
+        tests:
+          - unique
+          - not_null
+      
+      - name: segment
+        description: "User segment: high_value, at_risk, abandoned_search, new_user, regular"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['high_value', 'at_risk', 'abandoned_search', 'new_user', 'regular']
+      
+      - name: engagement_score
+        description: "User engagement score (0-100)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      
+      - name: lifetime_revenue
+        description: "Total revenue from this user"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      
+      - name: lifetime_conversions
+        description: "Total number of conversions"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+    tests:
+      # Business logic tests
+      - dbt_utils.expression_is_true:
+          expression: "segment = 'high_value' OR lifetime_revenue <= 500"
+          config:
+            where: "segment != 'high_value' AND lifetime_conversions < 5"
+
+  - name: mart_recommendations
+    description: |
+      Collaborative filtering recommendations for search personalization.
+      This model is synced to Redis via Reverse-ETL.
+      
+      Contains personalized destination recommendations based on similar user behavior.
+    
+    config:
+      tags: ['reverse-etl', 'marketing']
+    
+    columns:
+      - name: user_id
+        description: "User receiving the recommendation"
+        tests:
+          - not_null
+      
+      - name: recommended_destination
+        description: "Recommended destination based on similar users"
+        tests:
+          - not_null
+      
+      - name: recommendation_score
+        description: "Normalized recommendation score (0-1)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 1
+      
+      - name: supporting_users
+        description: "Number of similar users who liked this destination"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 1
+      
+      - name: rank
+        description: "Rank of recommendation for this user (1 = best)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 10
+
+    tests:
+      # Unique user-destination combination
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - user_id
+            - recommended_destination

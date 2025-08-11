@@ -1,0 +1,29 @@
+# dbt profiles for SearchFlow
+# This file configures database connections
+
+searchflow:
+  target: dev  # Default target
+  outputs:
+    # Local development with DuckDB
+    dev:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH', '../data/searchflow.duckdb') }}"
+      threads: 4
+    
+    # CI/CD testing
+    ci:
+      type: duckdb
+      path: ":memory:"
+      threads: 2
+    
+    # Production with Snowflake (configure when deploying)
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: TRANSFORMER
+      database: SEARCHFLOW
+      warehouse: TRANSFORM_WH
+      schema: PUBLIC
+      threads: 8

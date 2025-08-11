@@ -1,0 +1,9 @@
+# dbt packages
+packages:
+  # dbt utilities - common macros and tests
+  - package: dbt-labs/dbt_utils
+    version: [">=1.0.0", "<2.0.0"]
+  
+  # Code quality and documentation
+  - package: dbt-labs/codegen
+    version: [">=0.10.0", "<1.0.0"]
