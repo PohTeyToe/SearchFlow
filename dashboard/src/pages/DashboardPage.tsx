@@ -24,36 +24,42 @@ export const DashboardPage: React.FC = () => {
     const totalClicks = funnelData?.reduce((sum, d) => sum + d.clicks, 0) || 0;
     const totalConversions = funnelData?.reduce((sum, d) => sum + d.conversions, 0) || 0;
 
-    // Prepare funnel chart data
+    // Estimate revenue at risk (avg booking $450, using drop-off rate)
+    const bookingRate = totalSearches > 0 ? (totalConversions / totalSearches) : 0;
+    const potentialBookings = Math.round(totalSearches * 0.08); // industry avg 8% conversion
+    const lostBookings = Math.max(0, potentialBookings - totalConversions);
+    const revenueAtRisk = lostBookings * 450; // avg booking value
+
+    // Prepare funnel chart data with travel-specific labels
     const funnelChartData = [
         { name: 'Searches', value: totalSearches, fill: '#3b82f6' },
-        { name: 'Clicks', value: totalClicks, fill: '#8b5cf6' },
-        { name: 'Conversions', value: totalConversions, fill: '#10b981' },
+        { name: 'Views', value: totalClicks, fill: '#8b5cf6' },
+        { name: 'Bookings', value: totalConversions, fill: '#10b981' },
     ];
 
     return (
         <MainLayout
-            title="Dashboard"
-            subtitle="SearchFlow Analytics Overview"
+            title="Travel Booking Analytics"
+            subtitle="Understand your search-to-booking funnel"
         >
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <StatCard
-                    title="Total Searches"
+                    title="Flight & Hotel Searches"
                     value={totalSearches}
                     trend={{ value: 7.3, label: 'vs last week' }}
                     icon={<Search className="w-6 h-6" />}
                 />
                 <StatCard
-                    title="Click-through Rate"
-                    value={totalSearches > 0 ? `${((totalClicks / totalSearches) * 100).toFixed(1)}%` : '0%'}
+                    title="Booking Rate"
+                    value={totalSearches > 0 ? `${(bookingRate * 100).toFixed(1)}%` : '0%'}
                     trend={{ value: 2.1, label: 'vs last week' }}
                     icon={<TrendingUp className="w-6 h-6" />}
                 />
                 <StatCard
-                    title="Total Records"
-                    value="10,796"
-                    subtitle="Across all tables"
+                    title="Revenue at Risk"
+                    value={`$${revenueAtRisk.toLocaleString()}`}
+                    subtitle="From funnel drop-offs"
                     icon={<Database className="w-6 h-6" />}
                 />
                 <StatCard
@@ -81,11 +87,11 @@ export const DashboardPage: React.FC = () => {
                     )}
                 </div>
 
-                {/* Search Funnel */}
+                {/* Booking Funnel */}
                 <div className="lg:col-span-2">
                     <ChartContainer
-                        title="Search Funnel"
-                        subtitle="Last 7 days"
+                        title="Booking Funnel"
+                        subtitle="Search → View → Book (Last 7 days)"
                         isLoading={funnelLoading}
                     >
                         <HorizontalFunnel data={funnelChartData} />
