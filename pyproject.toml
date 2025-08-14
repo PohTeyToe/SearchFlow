@@ -1,0 +1,77 @@
+[project]
+name = "searchflow"
+version = "0.6.0"
+description = "Travel Search Analytics Platform -- understand and recover lost bookings"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Abdallah Safi"},
+]
+keywords = ["analytics", "data-pipeline", "machine-learning", "airflow", "dbt"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+src = ["event_generator", "ml_engine", "reverse_etl", "spark", "scripts"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "SIM",   # flake8-simplify
+    "RUF",   # ruff-specific rules
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function call in argument defaults (FastAPI uses this)
+    "SIM108",# use ternary operator (reduces readability in some cases)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["event_generator", "ml_engine", "reverse_etl"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]  # allow assert in tests
+"scripts/**/*.py" = ["E402"] # allow late imports in scripts
+
+[tool.pytest.ini_options]
+testpaths = [
+    "event_generator/tests",
+    "ml_engine/tests",
+    "reverse_etl/tests",
+]
+python_files = "test_*.py"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests requiring external services",
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # gradual adoption
+
+[[tool.mypy.overrides]]
+module = [
+    "duckdb",
+    "redis",
+    "xgboost",
+    "shap",
+    "pyspark.*",
+    "transformers",
+]
+ignore_missing_imports = true
