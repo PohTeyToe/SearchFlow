@@ -1,0 +1,200 @@
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.8.0-python3.11
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: 10
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+    DBT_PROFILES_DIR: /dbt
+    DUCKDB_PATH: /data/searchflow.duckdb
+    REDIS_HOST: redis
+    POSTGRES_HOST: postgres
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/plugins:/opt/airflow/plugins
+    - ./airflow/config:/opt/airflow/config
+    - ./dbt_transform:/dbt
+    - ./data:/data
+    - ./event_generator:/event_generator
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_started
+  networks:
+    - searchflow-network
+
+services:
+  # ============================================
+  # DATABASE SERVICES
+  # ============================================
+  
+  postgres:
+    image: postgres:15
+    container_name: searchflow-postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+      # Additional DB for CRM simulation
+      POSTGRES_MULTIPLE_DATABASES: searchflow
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./warehouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+    networks:
+      - searchflow-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: searchflow-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - searchflow-network
+
+  # ============================================
+  # AIRFLOW SERVICES
+  # ============================================
+  
+  airflow-init:
+    <<: *airflow-common
+    container_name: searchflow-airflow-init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db init
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@searchflow.local
+        # Install additional Python packages
+        pip install duckdb redis dbt-duckdb
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: searchflow-airflow-webserver
+    command: bash -c "pip install duckdb redis dbt-duckdb && airflow webserver"
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: searchflow-airflow-scheduler
+    command: bash -c "pip install duckdb redis dbt-duckdb && airflow scheduler"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  # ============================================
+  # APPLICATION SERVICES
+  # ============================================
+  
+  event-generator:
+    build:
+      context: ./event_generator
+      dockerfile: Dockerfile
+    container_name: searchflow-event-generator
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      OUTPUT_DIR: /data/raw
+      EVENTS_PER_SECOND: 10
+      CLICK_THROUGH_RATE: 0.30
+      CONVERSION_RATE: 0.10
+      USER_POOL_SIZE: 10000
+      ANONYMOUS_RATE: 0.40
+    volumes:
+      - ./data:/data
+      - ./event_generator/src:/app/src
+    depends_on:
+      - redis
+    networks:
+      - searchflow-network
+    # Run continuously in background, or use command to run once
+    command: python -m src.main --mode continuous
+
+  reverse-etl:
+    build:
+      context: ./reverse_etl
+      dockerfile: Dockerfile
+    container_name: searchflow-reverse-etl
+    environment:
+      DUCKDB_PATH: /data/searchflow.duckdb
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: searchflow
+      POSTGRES_USER: searchflow
+      POSTGRES_PASSWORD: searchflow123
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ./data:/data
+      - ./reverse_etl/src:/app/src
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - searchflow-network
+    # Typically triggered by Airflow, but can run standalone
+    command: sleep infinity
+
+  # ============================================
+  # VISUALIZATION
+  # ============================================
+  
+  metabase:
+    image: metabase/metabase:latest
+    container_name: searchflow-metabase
+    hostname: metabase
+    ports:
+      - "3000:3000"
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 5432
+      MB_DB_USER: airflow
+      MB_DB_PASS: airflow
+      MB_DB_HOST: postgres
+      MB_JETTY_HOST: 0.0.0.0
+    depends_on:
+      - postgres
+    networks:
+      - searchflow-network
+
+# ============================================
+# VOLUMES & NETWORKS
+# ============================================
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  searchflow-network:
+    driver: bridge

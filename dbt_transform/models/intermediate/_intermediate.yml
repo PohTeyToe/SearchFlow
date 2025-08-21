@@ -1,0 +1,97 @@
+version: 2
+
+models:
+  - name: int_search_sessions
+    description: |
+      Sessionized search activity with aggregated metrics.
+      Sessions are grouped by session_id with a 30-minute timeout.
+    
+    columns:
+      - name: session_id
+        description: "Unique session identifier"
+        tests:
+          - unique
+          - not_null
+      
+      - name: search_count
+        description: "Number of searches in this session"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+      
+      - name: session_outcome
+        description: "Session outcome: converted, engaged, or bounced"
+        tests:
+          - accepted_values:
+              values: ['converted', 'engaged', 'bounced']
+      
+      - name: session_ctr
+        description: "Click-through rate for this session"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 1
+      
+      - name: session_conversion_rate
+        description: "Conversion rate for this session"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 1
+    
+    tests:
+      # Business logic: clicks can't exceed searches
+      - dbt_utils.expression_is_true:
+          expression: "click_count <= search_count * 10"  # Allow multiple clicks per search
+      
+      # Business logic: conversions can't exceed clicks
+      - dbt_utils.expression_is_true:
+          expression: "conversion_count <= click_count"
+
+  - name: int_user_journeys
+    description: |
+      User journey tracking from search to click to conversion.
+      Used for attribution modeling and funnel analysis.
+    
+    columns:
+      - name: search_event_id
+        description: "Unique search event identifier"
+        tests:
+          - not_null
+      
+      - name: session_id
+        description: "Session containing this search"
+        tests:
+          - not_null
+      
+      - name: journey_stage
+        description: "Stage in the funnel: searched_only, clicked, or converted"
+        tests:
+          - accepted_values:
+              values: ['searched_only', 'clicked', 'converted']
+      
+      - name: is_converted
+        description: "Flag indicating if journey resulted in conversion (0 or 1)"
+        tests:
+          - accepted_values:
+              values: [0, 1]
+      
+      - name: attributed_revenue
+        description: "Revenue attributed to this search"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+    
+    tests:
+      # Business logic: conversion only possible if clicked
+      - dbt_utils.expression_is_true:
+          expression: "journey_stage != 'converted' OR click_event_id IS NOT NULL"
+      
+      # Business logic: click only possible if there's a click event
+      - dbt_utils.expression_is_true:
+          expression: "journey_stage != 'clicked' OR click_event_id IS NOT NULL"
+      
+      # Business logic: attributed revenue only when converted
+      - dbt_utils.expression_is_true:
+          expression: "attributed_revenue = 0 OR is_converted = 1"
