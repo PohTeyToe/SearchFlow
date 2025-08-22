@@ -1,0 +1,66 @@
+# Docker Compose Development Overrides
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# This file adds development conveniences on top of the base compose file:
+#   - Volume mounts for live code reloading
+#   - Debug ports exposed
+#   - Reduced resource limits for laptop-friendly operation
+#   - Verbose logging
+
+services:
+  event-generator:
+    volumes:
+      - ./event_generator/src:/app/src
+      - ./data:/data
+    environment:
+      EVENTS_PER_SECOND: 5   # Lower rate for local dev
+      LOG_LEVEL: DEBUG
+
+  ml-engine:
+    volumes:
+      - ./ml_engine:/app
+      - ./data:/data
+    environment:
+      LOG_LEVEL: DEBUG
+      CACHE_TTL: 60  # Short TTL for faster iteration
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # debugpy remote attach
+
+  reverse-etl:
+    volumes:
+      - ./reverse_etl/src:/app/src
+      - ./data:/data
+    environment:
+      LOG_LEVEL: DEBUG
+
+  airflow-webserver:
+    environment:
+      AIRFLOW__WEBSERVER__RELOAD_ON_PLUGIN_CHANGE: 'true'
+
+  airflow-scheduler:
+    environment:
+      AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: 5  # Faster DAG pickup
+
+  spark:
+    volumes:
+      - ./spark:/app
+      - ./data:/data
+    environment:
+      SPARK_DRIVER_MEMORY: 1g
+      SPARK_EXECUTOR_MEMORY: 1g
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  metabase:
+    ports:
+      - "3000:3000"
