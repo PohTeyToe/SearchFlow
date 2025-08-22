@@ -402,8 +402,21 @@ This project proves competency in:
 
 ## 📚 Documentation
 
+### Project Docs
 - [Architecture Deep Dive](docs/ARCHITECTURE.md)
 - [Data Schemas & Models](docs/DATA_SCHEMAS.md)
+- [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+
+### Component Docs
+- [Event Generator](event_generator/README.md) - Synthetic traffic simulation
+- [Airflow DAGs](airflow/README.md) - Pipeline orchestration
+- [Reverse-ETL](reverse_etl/README.md) - Operational sync service
+- [Dashboard](dashboard/README.md) - React monitoring UI
+- [Utility Scripts](scripts/README.md) - Helper scripts
+
+### Contributing
+- [Contributing Guide](CONTRIBUTING.md) - Development setup & code style
 
 ---
 
