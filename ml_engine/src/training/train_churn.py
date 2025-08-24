@@ -129,33 +129,58 @@ def train_churn(
     print(f"  F1: {metrics.f1:.2%}")
     
     # Feature importance
-    print("\n📊 Top Feature Importance:")
+    print("\n  Top Feature Importance:")
     importance = predictor.get_feature_importance()
     for _, row in importance.head(5).iterrows():
         print(f"  {row['feature']}: {row['importance']:.3f}")
-    
+
     # Save model
     print(f"\n  Saving model to {model_path}...")
     predictor.save(model_path)
-    
-    print("\n✅ Churn model trained successfully!")
+
+    # Save evaluation results
+    import json
+    results_dir = os.path.join(os.path.dirname(model_path), "..", "training_results")
+    os.makedirs(results_dir, exist_ok=True)
+    results = {
+        "model": "xgboost",
+        "n_users": len(df),
+        "n_train": len(X_train),
+        "n_test": len(X_test),
+        "churn_rate": round(float(df["churned"].mean()), 4),
+        "auc": round(float(metrics.auc), 4),
+        "accuracy": round(float(metrics.accuracy), 4),
+        "precision": round(float(metrics.precision), 4),
+        "recall": round(float(metrics.recall), 4),
+        "f1": round(float(metrics.f1), 4),
+        "n_estimators": 100,
+        "max_depth": 6,
+        "learning_rate": 0.1,
+        "top_features": [
+            {"feature": row["feature"], "importance": round(float(row["importance"]), 4)}
+            for _, row in importance.head(5).iterrows()
+        ],
+    }
+    with open(os.path.join(results_dir, "churn_results.json"), "w") as f:
+        json.dump(results, f, indent=2)
+
+    print(f"\n  Churn model trained successfully!")
     print(f"   AUC: {metrics.auc:.2%}")
-    print(f"   → Estimated churn reduction: 35% (via early intervention)")
-    
+
     # Sample prediction with SHAP
-    print("\n📝 Sample Prediction with SHAP Explanation:")
+    print("\n  Sample Prediction with SHAP Explanation:")
     sample_user = df.iloc[0]
     sample_features = {col: sample_user[col] for col in feature_cols}
     prediction = predictor.predict("sample_user", sample_features)
-    
+
     print(f"  User: sample_user")
     print(f"  Churn Probability: {prediction.churn_probability:.1%}")
     print(f"  Risk Level: {prediction.risk_level}")
     print(f"  Top Factors:")
     for factor in prediction.top_factors[:3]:
-        direction = "↑" if factor['direction'] == 'increases' else "↓"
+        direction = "+" if factor['direction'] == 'increases' else "-"
         print(f"    {direction} {factor['feature']}: {factor['impact']:.3f}")
-    
+
     return predictor, metrics
 
 

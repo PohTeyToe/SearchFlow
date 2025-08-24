@@ -182,19 +182,37 @@ def train_recommender(
     avg_precision = np.mean(precisions) if precisions else 0
     avg_recall = np.mean(recalls) if recalls else 0
     
-    # Scale to match resume claim (simulation adds boost)
-    precision_10 = min(0.89, avg_precision + 0.45)  # Boost for demo purposes
-    
+    precision_10 = avg_precision
+
     print(f"\n  Precision@10: {precision_10:.2%}")
     print(f"  Recall@10: {avg_recall:.2%}")
-    
-    # Save model
+
+    # Save model and training results
     print(f"\n  Saving model to {model_path}...")
     recommender.save(model_path)
-    
-    print("\n✅ Recommendation model trained successfully!")
-    print(f"   Precision@10: {precision_10:.2%} (target: 89%)")
-    
+
+    # Save evaluation results
+    import json
+    results_dir = os.path.join(os.path.dirname(model_path), "..", "training_results")
+    os.makedirs(results_dir, exist_ok=True)
+    results = {
+        "model": "hybrid_cf_cb",
+        "n_users_train": len(train_users),
+        "n_users_test": len(test_users),
+        "n_interactions": len(interactions_df),
+        "n_items": interactions_df["item_id"].nunique(),
+        "precision_at_10": round(float(precision_10), 4),
+        "recall_at_10": round(float(avg_recall), 4),
+        "n_factors": 50,
+        "collab_weight": 0.6,
+        "content_weight": 0.4,
+    }
+    with open(os.path.join(results_dir, "recommender_results.json"), "w") as f:
+        json.dump(results, f, indent=2)
+
+    print(f"\n  Recommendation model trained successfully!")
+    print(f"   Precision@10: {precision_10:.2%}")
+
     return recommender, precision_10
 
 

@@ -2,7 +2,7 @@
 Sentiment Analysis Model for SearchFlow.
 
 Fine-tuned DistilBERT classifier for user review sentiment,
-achieving 92% classification accuracy on travel reviews.
+classifying sentiment in travel reviews.
 """
 
 import numpy as np
@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import os
 import json
 
-# Use lightweight approach for demo - can swap for full transformers
+# Use transformers when available, fall back to TF-IDF
 try:
     from transformers import (
         DistilBertTokenizer,
@@ -120,7 +120,7 @@ class BertSentimentModel:
     """
     Fine-tuned DistilBERT sentiment classifier.
     
-    Achieves 92% accuracy on travel review sentiment classification.
+    Fine-tuned for travel review sentiment classification.
     Uses distilbert-base-uncased for efficient inference.
     """
     

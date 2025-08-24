@@ -1,8 +1,8 @@
 """
 Churn Prediction Model for SearchFlow.
 
-XGBoost-based propensity model with SHAP explainability,
-reducing churn by 35% through early intervention.
+XGBoost-based propensity model with SHAP explainability
+for identifying at-risk users.
 """
 
 import numpy as np
