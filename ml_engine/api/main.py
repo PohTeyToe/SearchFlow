@@ -2,7 +2,7 @@
 FastAPI application for ML inference.
 
 Provides real-time predictions for recommendations, sentiment, and churn.
-Serves 1000+ predictions/second with Redis caching.
+Supports Redis caching for low-latency responses.
 """
 
 import os
@@ -247,7 +247,7 @@ async def analyze_sentiment(request: SentimentRequest):
     """
     Classify sentiment of review text.
     
-    Uses fine-tuned DistilBERT with 92% accuracy.
+    Uses fine-tuned DistilBERT or TF-IDF fallback.
     """
     if models["sentiment"] is None:
         # Mock response
@@ -298,7 +298,7 @@ async def predict_churn(user_id: str, request: ChurnRequest = ChurnRequest()):
     """
     Predict churn probability with SHAP explanations.
     
-    Uses XGBoost model with 85% AUC.
+    Uses XGBoost model with SHAP explanations.
     Returns top risk factors for intervention.
     """
     # Check cache
@@ -370,25 +370,30 @@ def get_user_features(user_id: str) -> dict:
 
 @app.get("/metrics")
 async def get_metrics():
-    """Get model performance metrics."""
-    return {
-        "recommendation": {
-            "precision_at_10": 0.89,
-            "algorithm": "hybrid_cf_cb"
-        },
-        "sentiment": {
-            "accuracy": 0.92,
-            "model": "distilbert-finetuned"
-        },
-        "churn": {
-            "auc": 0.85,
-            "churn_reduction": 0.35
-        },
-        "inference": {
-            "target_throughput": "1000+ req/sec",
-            "cache_ttl_seconds": CACHE_TTL
-        }
+    """Get model performance metrics loaded from training results."""
+    metrics = {
+        "recommendation": {"algorithm": "hybrid_cf_cb"},
+        "sentiment": {"model": "tfidf_logreg"},
+        "churn": {"model": "xgboost"},
+        "inference": {"cache_ttl_seconds": CACHE_TTL},
     }
+
+    # Load saved training results if available
+    results_dir = os.path.join(MODEL_PATH, "..", "training_results")
+    for name, filename in [
+        ("recommendation", "recommender_results.json"),
+        ("sentiment", "sentiment_results.json"),
+        ("churn", "churn_results.json"),
+    ]:
+        filepath = os.path.join(results_dir, filename)
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, "r") as f:
+                    metrics[name] = json.load(f)
+            except Exception:
+                pass
+
+    return metrics
 
 
 if __name__ == "__main__":
