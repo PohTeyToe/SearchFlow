@@ -1,0 +1,48 @@
+# Pre-commit hooks for SearchFlow
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.md$'
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  - repo: https://github.com/psf/black
+    rev: 24.2.0
+    hooks:
+      - id: black
+        language_version: python3.11
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [-d, '{extends: relaxed, rules: {line-length: {max: 120}}}']
+        types: [yaml]
+
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 3.0.0a4
+    hooks:
+      - id: sqlfluff-lint
+        args: [--dialect, duckdb]
+        files: 'dbt_transform/models/.*\.sql$'
+        additional_dependencies: ['dbt-duckdb==1.7.0']
