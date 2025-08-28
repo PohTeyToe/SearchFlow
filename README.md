@@ -12,12 +12,14 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688?logo=fastapi&logoColor=white)
 ![XGBoost](https://img.shields.io/badge/XGBoost-2.0-orange?logo=xgboost&logoColor=white)
 ![HuggingFace](https://img.shields.io/badge/🤗_Transformers-DistilBERT-yellow)
-![Tests](https://img.shields.io/badge/dbt%20tests-97.5%25%20passing-brightgreen)
-![ML Accuracy](https://img.shields.io/badge/ML%20Precision@10-89%25-success)
+![Tests](https://img.shields.io/badge/dbt%20tests-79%20passing-brightgreen)
+![pytest](https://img.shields.io/badge/pytest-50%2B%20tests-brightgreen)
 ![Pipeline](https://img.shields.io/badge/E2E%20Pipeline-68s-success)
+![PySpark](https://img.shields.io/badge/PySpark-3.5-E25A1C?logo=apachespark&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.0-EE4C2C?logo=pytorch&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-> **Recover lost bookings by understanding your search funnel.** Track every step from destination search to completed booking, predict churn before users leave, and activate personalized interventions in real-time.
+> **Recover lost bookings by understanding your search funnel.** Track every step from destination search to completed booking, predict churn before users leave, and activate personalized interventions in real-time. Includes PySpark batch analytics, PyTorch model training, and 50+ automated Python tests.
 
 </div>
 
@@ -28,10 +30,11 @@
 **Travel platforms lose 70%+ of users between search and booking.** Users search for "cheap flights to Cancun," browse results, maybe click a few options... then disappear. Most platforms have no idea *where* or *why* the drop-off happens.
 
 SearchFlow solves this by:
-- 📊 **Tracking the full funnel** — Search → Click → Booking with granular event data
-- 🔮 **Predicting churn** — ML models identify at-risk users before they abandon (85% AUC)
-- 💡 **Recommending recovery actions** — Personalized destination suggestions increase conversion (89% precision)
-- ⚡ **Activating in real-time** — Reverse-ETL syncs insights to CRM, email, and ad platforms
+- **Tracking the full funnel** -- Search, Click, Booking with granular event data
+- **Predicting churn** -- XGBoost model identifies at-risk users before they abandon
+- **Recommending recovery actions** -- Hybrid collaborative + content-based filtering
+- **Batch analytics** -- PySpark session analysis and user segmentation
+- **Activating in real-time** -- Reverse-ETL syncs insights to CRM, email, and ad platforms
 
 ---
 
@@ -39,12 +42,14 @@ SearchFlow solves this by:
 
 | What | Details |
 |------|---------|
-| **Use Case** | Travel search analytics — understand and recover lost bookings |
-| **Data Pipeline** | Airflow → dbt → DuckDB (68 seconds end-to-end) |
-| **ML Engine** | Recommendations (89% precision), Sentiment (92% accuracy), Churn prediction (85% AUC) |
-| **Real-time API** | FastAPI serving 1K+ predictions/sec with Redis caching |
+| **Use Case** | Travel search analytics -- understand and recover lost bookings |
+| **Data Pipeline** | Airflow, dbt, DuckDB (68 seconds end-to-end) |
+| **ML Engine** | Recommendations (hybrid CF), Sentiment (TF-IDF + PyTorch DistilBERT), Churn (XGBoost + SHAP) |
+| **Batch Analytics** | PySpark session analysis, user segmentation, conversion funnels |
+| **Real-time API** | FastAPI with Redis caching |
 | **Dashboard** | React + TypeScript monitoring UI with travel-specific analytics |
-| **Tests** | 78 dbt tests (97.5% passing) + ML evaluation metrics |
+| **Tests** | 79 dbt tests + 50+ pytest functions across 6 test files |
+| **Load Testing** | Locust benchmark suite for ML API endpoints |
 
 ```bash
 # Try it in 30 seconds
@@ -94,11 +99,11 @@ Raw Events → Airflow Ingestion → dbt Transformations → Analytics Marts →
 
 ### 3. ML-Powered Insights
 Three models work together to maximize conversions:
-| Model | Purpose | Performance |
-|-------|---------|-------------|
-| **Recommendations** | Suggest destinations likely to convert | 89% Precision@10 |
-| **Sentiment** | Filter negative reviews, highlight positive | 92% Accuracy |
-| **Churn Prediction** | Identify users about to abandon | 85% AUC |
+| Model | Purpose | Algorithm |
+|-------|---------|-----------|
+| **Recommendations** | Suggest destinations likely to convert | Hybrid CF + content-based (SVD) |
+| **Sentiment** | Filter negative reviews, highlight positive | TF-IDF + PyTorch DistilBERT |
+| **Churn Prediction** | Identify users about to abandon | XGBoost + SHAP explainability |
 
 ### 4. Real-time Activation
 Insights aren't just dashboards—they drive action:
@@ -135,11 +140,11 @@ I built the ingestion and reverse-ETL layers from scratch rather than using SaaS
 
 SearchFlow includes a production-grade ML engine for real-time personalization:
 
-| Model | Algorithm | Performance | Use Case |
-|-------|-----------|-------------|----------|
-| **Recommendations** | Hybrid CF + Content-based | 89% Precision@10 | Personalized destination suggestions |
-| **Sentiment Analysis** | Fine-tuned DistilBERT | 92% Accuracy | Review classification, content filtering |
-| **Churn Prediction** | XGBoost + SHAP | 85% AUC | Early intervention, reducing churn by 35% |
+| Model | Algorithm | Use Case |
+|-------|-----------|----------|
+| **Recommendations** | Hybrid CF + Content-based (SVD) | Personalized destination suggestions |
+| **Sentiment Analysis** | TF-IDF baseline + PyTorch DistilBERT fine-tuning | Review classification, content filtering |
+| **Churn Prediction** | XGBoost + SHAP | Propensity scoring with explainability |
 
 ### Real-time Inference API
 
@@ -155,9 +160,38 @@ curl -X POST http://localhost:8000/sentiment \
 curl -X POST http://localhost:8000/churn/user_456
 ```
 
-**Performance:** 1,000+ predictions/second with Redis caching.
-
 See [ML Engine Deep Dive](docs/ML_ENGINE.md) for full documentation.
+
+### PyTorch Training
+
+A raw PyTorch training script fine-tunes DistilBERT for sentiment classification:
+
+```bash
+cd ml_engine
+python -m src.models.train_sentiment_pytorch --samples 5000 --epochs 5
+```
+
+- Custom `SentimentDataset(torch.utils.data.Dataset)` class
+- `AutoModel` encoder + `nn.Linear` classification head
+- AdamW optimizer with linear warmup + cosine decay scheduling
+- Early stopping on validation loss
+- Training results saved to `ml_engine/training_results/sentiment_pytorch_results.json`
+
+### PySpark Batch Analytics
+
+PySpark jobs process event data at scale:
+
+```bash
+# Session analysis: sessionize events, compute metrics, build conversion funnel
+docker-compose exec spark spark-submit /app/session_analysis.py --data-dir /data/raw
+
+# User segmentation: engagement scoring and segment assignment
+docker-compose exec spark spark-submit /app/user_segmentation.py
+```
+
+- **Session Analysis**: Reads JSONL events, sessionizes by user with 30-min timeout, computes duration/bounce rate/conversion funnel
+- **User Segmentation**: Classifies users into 5 segments (high_value, at_risk, new_user, regular, abandoned_search)
+- Output to Parquet or PostgreSQL via JDBC
 
 ---
 
@@ -211,8 +245,9 @@ See [ML Engine Deep Dive](docs/ML_ENGINE.md) for full documentation.
 | **Events Processed** | 10,796 | Simulates daily search/click/conversion activity |
 | **End-to-End Pipeline** | **68 seconds** | From raw events → transformed marts → synced to destinations |
 | **dbt Models** | 9/9 passing | 3 staging, 2 intermediate, 4 mart models |
-| **dbt Tests** | 78/80 (97.5%) | Schema validation + business logic tests |
-| **Docker Services** | 7 | Full stack runs with single `docker-compose up` |
+| **dbt Tests** | 79 | Schema validation + business logic tests |
+| **Python Tests** | 50+ | pytest: ML models, API, event generator, reverse-ETL |
+| **Docker Services** | 10 | Full stack runs with single `docker-compose up` |
 | **Reverse-ETL Sync** | 52 users/1,607 segments | Redis cache + Postgres CRM |
 
 ### Pipeline Breakdown
@@ -347,7 +382,7 @@ SearchFlow/
 │   ├── package.json
 │   └── vite.config.ts
 │
-├── ml_engine/                         # AI/ML Engine (NEW)
+├── ml_engine/                         # AI/ML Engine
 │   ├── api/
 │   │   ├── main.py                    # FastAPI inference server
 │   │   └── schemas.py                 # Pydantic models
@@ -355,12 +390,26 @@ SearchFlow/
 │   │   ├── models/
 │   │   │   ├── recommendation.py      # Hybrid CF + content-based
 │   │   │   ├── sentiment.py           # DistilBERT classifier
-│   │   │   └── churn.py               # XGBoost + SHAP
+│   │   │   ├── churn.py               # XGBoost + SHAP
+│   │   │   └── train_sentiment_pytorch.py  # PyTorch fine-tuning
 │   │   ├── training/                  # Model training scripts
 │   │   ├── evaluation/                # Metrics (precision@k, etc.)
 │   │   └── data/                      # Synthetic data generation
+│   ├── training_results/              # Saved training metrics (JSON)
+│   ├── tests/                         # pytest: models, API, evaluation
 │   ├── Dockerfile
 │   └── requirements.txt
+│
+├── spark/                             # PySpark batch analytics
+│   ├── session_analysis.py            # Session metrics + conversion funnel
+│   ├── user_segmentation.py           # Engagement scoring + segments
+│   ├── Dockerfile
+│   └── requirements.txt
+│
+├── benchmarks/                        # Load testing
+│   ├── locustfile.py                  # Locust ML API benchmark
+│   ├── run_benchmark.sh               # Headless runner script
+│   └── results/                       # Benchmark CSV output
 │
 └── scripts/                           # Utility scripts
     ├── setup_local.sh
@@ -381,14 +430,16 @@ SearchFlow/
 | **Message Queue** | Redis Streams | Event buffering |
 | **Reverse-ETL** | Custom Python | Sync marts → ops systems |
 | **ML Recommendations** | Scikit-learn, SVD | Collaborative + content-based filtering |
-| **ML Sentiment** | HuggingFace Transformers | Fine-tuned DistilBERT (92% accuracy) |
+| **ML Sentiment** | PyTorch + HuggingFace, TF-IDF | DistilBERT fine-tuning + TF-IDF baseline |
 | **ML Churn** | XGBoost + SHAP | Propensity scoring with explainability |
-| **ML Serving** | FastAPI + Redis | 1K+ predictions/sec with caching |
+| **ML Serving** | FastAPI + Redis | Real-time inference with caching |
+| **Batch Analytics** | PySpark 3.5 | Session analysis + user segmentation |
+| **Load Testing** | Locust | ML API benchmark suite |
 | **Dashboard** | React 18 + TypeScript | Real-time monitoring UI |
 | **State Management** | Zustand | Lightweight state management |
 | **Visualizations** | Recharts | Analytics charts & graphs |
 | **BI Dashboards** | Metabase | Business intelligence |
-| **Containerization** | Docker Compose | Local development (8 services) |
+| **Containerization** | Docker Compose | Local development (10 services) |
 | **Language** | Python 3.11+ / TypeScript 5.6 | All services |
 
 ---
@@ -522,10 +573,11 @@ Conversion funnel and trend analysis
 
 **Endpoints:**
 ```
-GET  /health              → {"status": "healthy", "models_loaded": 3}
-POST /recommend/{user_id} → {"recommendations": [...], "precision": 0.89}
-POST /sentiment           → {"sentiment": "positive", "confidence": 0.95}
-POST /churn/{user_id}     → {"probability": 0.72, "risk": "high", "factors": [...]}
+GET  /health              -> {"status": "healthy", "models_loaded": {...}}
+POST /recommend/{user_id} -> {"recommendations": [...], "algorithm": "hybrid"}
+POST /sentiment           -> {"sentiment": "positive", "confidence": 0.95}
+POST /churn/{user_id}     -> {"probability": 0.72, "risk": "high", "factors": [...]}
+GET  /metrics             -> Loaded from training results JSON files
 ```
 
 ---
@@ -552,15 +604,54 @@ POST /churn/{user_id}     → {"probability": 0.72, "risk": "high", "factors": [
 
 ---
 
-## 🚀 Future Improvements
+## Testing
+
+### Python Tests (pytest)
+
+```bash
+# Run all tests
+cd ml_engine && python -m pytest tests/ -v
+cd event_generator && python -m pytest tests/ -v
+cd reverse_etl && python -m pytest tests/ -v
+```
+
+| Test File | What It Tests |
+|-|-|
+| `ml_engine/tests/test_models.py` | Recommendation, sentiment, churn model inference |
+| `ml_engine/tests/test_api.py` | FastAPI endpoints via TestClient |
+| `ml_engine/tests/test_evaluation.py` | Precision@K, Recall@K, NDCG@K, MAP@K, hit rate, coverage |
+| `event_generator/tests/test_generator.py` | Event generation, schema validation, publishers |
+| `event_generator/tests/test_models.py` | Event data models, funnel simulation |
+| `reverse_etl/tests/test_syncs.py` | Sync modules with mocked DuckDB, Postgres, Redis |
+
+### dbt Tests
+
+79 schema tests across 9 transformation models, including funnel integrity constraints.
+
+### Load Testing
+
+```bash
+# Run Locust benchmark (headless)
+./benchmarks/run_benchmark.sh http://localhost:8000 100 10 60s
+```
+
+Tests all ML API endpoints (/recommend, /sentiment, /churn) under concurrent load with configurable users and spawn rate. Results saved as CSV in `benchmarks/results/`.
+
+---
+
+## Future Improvements
 
 - [ ] Add Kubernetes deployment manifests
 - [ ] Implement real-time streaming with Kafka
-- [x] Add ML-based recommendation engine (89% precision@10)
-- [x] Implement sentiment analysis (92% accuracy)
+- [x] Add ML-based recommendation engine (hybrid CF + content-based)
+- [x] Implement sentiment analysis (TF-IDF + PyTorch DistilBERT)
 - [x] Build churn prediction with SHAP explainability
+- [x] Add PySpark batch analytics (session analysis + user segmentation)
+- [x] Add PyTorch training pipeline with early stopping
+- [x] Add 50+ Python tests across ML, event generator, and reverse-ETL
+- [x] Add Locust load testing for ML API
 - [ ] Create Terraform infrastructure-as-code
-- [x] Add CI/CD pipeline with GitHub Actions
+- [x] Add CI/CD pipeline with GitHub Actions (dbt + lint + pytest)
 - [ ] Implement data lineage tracking with OpenLineage
 
 ---
