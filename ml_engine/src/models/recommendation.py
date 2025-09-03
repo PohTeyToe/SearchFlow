@@ -2,7 +2,7 @@
 Hybrid Recommendation Engine for SearchFlow.
 
 Combines collaborative filtering and content-based filtering to provide
-personalized destination recommendations with 89% precision@10.
+personalized destination recommendations.
 """
 
 import numpy as np
@@ -172,7 +172,7 @@ class HybridRecommender:
     """
     Hybrid recommendation engine combining collaborative and content-based filtering.
     
-    Achieves 89% precision@10 by blending both approaches:
+    Blends both approaches for improved accuracy:
     - Collaborative: Captures user behavior patterns
     - Content-based: Handles cold-start with item features
     """

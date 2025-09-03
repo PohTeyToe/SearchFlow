@@ -79,21 +79,36 @@ def train_sentiment(
     
     accuracy = correct / total
     
-    # Boost for demo (TF-IDF typically gets ~85%, claim is 92%)
-    reported_accuracy = min(0.92, accuracy + 0.07)
-    
-    print(f"\n  Raw Accuracy: {accuracy:.2%}")
-    print(f"  Reported Accuracy: {reported_accuracy:.2%} (target: 92%)")
-    
+    print(f"\n  Accuracy: {accuracy:.2%}")
+
     # Save model
     print(f"\n  Saving model to {model_path}...")
     analyzer.save(model_path)
-    
-    print("\n✅ Sentiment model trained successfully!")
-    print(f"   Classification Accuracy: {reported_accuracy:.2%}")
-    
+
+    # Save evaluation results
+    import json
+    results_dir = os.path.join(os.path.dirname(model_path), "..", "training_results")
+    os.makedirs(results_dir, exist_ok=True)
+    results = {
+        "model": "bert" if use_bert else "tfidf_logreg",
+        "n_samples": n_samples,
+        "n_train": len(train_texts),
+        "n_test": len(test_texts),
+        "accuracy": round(float(accuracy), 4),
+        "label_distribution": {
+            "positive": labels.count("positive"),
+            "negative": labels.count("negative"),
+            "neutral": labels.count("neutral"),
+        },
+    }
+    with open(os.path.join(results_dir, "sentiment_results.json"), "w") as f:
+        json.dump(results, f, indent=2)
+
+    print(f"\n  Sentiment model trained successfully!")
+    print(f"   Classification Accuracy: {accuracy:.2%}")
+
     # Show sample predictions
-    print("\n📝 Sample Predictions:")
+    print("\n  Sample Predictions:")
     samples = [
         "Amazing hotel in Miami! Best vacation ever!",
         "Terrible service, would not recommend.",
@@ -102,9 +117,9 @@ def train_sentiment(
     for sample in samples:
         result = analyzer.predict(sample)
         print(f"  '{sample[:50]}...'")
-        print(f"    → {result.sentiment} ({result.confidence:.2%})")
-    
-    return analyzer, reported_accuracy
+        print(f"    -> {result.sentiment} ({result.confidence:.2%})")
+
+    return analyzer, accuracy
 
 
 if __name__ == "__main__":
