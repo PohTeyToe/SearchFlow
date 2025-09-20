@@ -1,4 +1,10 @@
-"""Event data models for SearchFlow."""
+"""Event data models for SearchFlow.
+
+Defines the three core event types that flow through the platform:
+SearchEvent, ClickEvent, and ConversionEvent.  Each event supports
+serialization to dict and JSON for publishing to files, Redis, or
+the console.
+"""
 
 from dataclasses import dataclass, field
 from datetime import datetime

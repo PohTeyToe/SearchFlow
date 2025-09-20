@@ -1,4 +1,10 @@
-"""Event generation logic for SearchFlow."""
+"""Event generation logic for SearchFlow.
+
+Simulates realistic user behavior on a travel search platform.
+Generates correlated search, click, and conversion events within
+browsing sessions, respecting configurable funnel rates and
+content distributions.
+"""
 
 import random
 from datetime import datetime, timedelta
@@ -10,11 +16,20 @@ from .config import Config
 
 
 class EventGenerator:
-    """Generates realistic search, click, and conversion events."""
-    
-    def __init__(self, config: Config):
-        self.config = config
-        self.user_pool = [f"user_{i}" for i in range(config.user_pool_size)]
+    """Generates realistic search, click, and conversion events.
+
+    Each call to ``generate_session`` yields a sequence of events
+    representing one user's browsing session.  Sessions contain
+    1-5 searches, with clicks and conversions following the
+    configured funnel rates (CTR and conversion rate).
+
+    Args:
+        config: Generator configuration (rates, pool sizes, content lists).
+    """
+
+    def __init__(self, config: Config) -> None:
+        self.config: Config = config
+        self.user_pool: List[str] = [f"user_{i}" for i in range(config.user_pool_size)]
         
         # Query templates
         self.query_templates = [
