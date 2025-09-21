@@ -1,4 +1,10 @@
-"""Sync abandoned search triggers to email queue."""
+"""Sync abandoned search triggers to email queue.
+
+Identifies users who searched within the last 48 hours but did not
+convert, and queues personalized re-engagement emails in the
+``email_queue`` PostgreSQL table.  Duplicate emails for the same
+user within 24 hours are suppressed.
+"""
 
 from datetime import datetime
 from typing import Dict, Any, List

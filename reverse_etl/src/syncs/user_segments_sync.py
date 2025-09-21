@@ -1,4 +1,11 @@
-"""Sync user segments from warehouse to CRM table."""
+"""Sync user segments from warehouse to CRM table.
+
+Reads ``mart_user_segments`` from DuckDB and upserts rows into the
+``crm_user_segments`` table in PostgreSQL.  The CRM table tracks
+segment transitions via ``previous_segment`` and ``segment_changed_at``
+columns so downstream consumers can detect when a user moves between
+segments (e.g., from ``regular`` to ``at_risk``).
+"""
 
 from datetime import datetime
 from typing import Dict, Any, List
