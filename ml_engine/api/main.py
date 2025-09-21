@@ -148,24 +148,38 @@ app.add_middleware(
 # ============================================
 
 def get_cached(key: str) -> Optional[dict]:
-    """Get cached result from Redis."""
+    """Get cached result from Redis.
+
+    Returns None when Redis is unavailable or the key does not exist,
+    allowing the caller to fall through to model inference.
+    """
     if not redis_client:
         return None
     try:
         data = redis_client.get(key)
         return json.loads(data) if data else None
-    except:
+    except (redis.ConnectionError, redis.TimeoutError) as exc:
+        logger.debug("Cache read failed for %s: %s", key, exc)
+        return None
+    except (json.JSONDecodeError, TypeError) as exc:
+        logger.warning("Corrupt cache entry for %s: %s", key, exc)
         return None
 
 
-def set_cached(key: str, value: dict, ttl: int = CACHE_TTL):
-    """Cache result in Redis."""
+def set_cached(key: str, value: dict, ttl: int = CACHE_TTL) -> None:
+    """Cache result in Redis.
+
+    Failures are logged but do not propagate -- the API continues
+    to serve predictions without caching when Redis is down.
+    """
     if not redis_client:
         return
     try:
         redis_client.setex(key, ttl, json.dumps(value))
-    except:
-        pass
+    except (redis.ConnectionError, redis.TimeoutError) as exc:
+        logger.debug("Cache write failed for %s: %s", key, exc)
+    except TypeError as exc:
+        logger.warning("Could not serialize value for %s: %s", key, exc)
 
 
 # ============================================
