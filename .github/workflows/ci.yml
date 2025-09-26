@@ -41,19 +41,55 @@ jobs:
   python-lint:
     name: Python Lint
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
       - name: Install linters
         run: pip install ruff
-      
+
       - name: Lint Python code
         run: ruff check event_generator/ reverse_etl/ scripts/ --ignore E501
         continue-on-error: true
+
+  python-test:
+    name: Python Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ML engine dependencies
+        run: |
+          pip install pytest numpy pandas scikit-learn xgboost shap joblib
+          pip install fastapi httpx uvicorn pydantic redis
+
+      - name: Install event generator dependencies
+        run: pip install click redis
+
+      - name: Install reverse ETL dependencies
+        run: pip install duckdb psycopg2-binary redis
+
+      - name: Run ML engine tests
+        working-directory: ./ml_engine
+        run: python -m pytest tests/ -v --tb=short
+
+      - name: Run event generator tests
+        working-directory: ./event_generator
+        run: python -m pytest tests/ -v --tb=short
+
+      - name: Run reverse ETL tests
+        working-directory: ./reverse_etl
+        run: python -m pytest tests/ -v --tb=short
