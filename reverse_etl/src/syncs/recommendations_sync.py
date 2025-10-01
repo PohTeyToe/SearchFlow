@@ -1,4 +1,11 @@
-"""Sync recommendation scores to Redis for real-time personalization."""
+"""Sync recommendation scores to Redis for real-time personalization.
+
+Reads the top-10 recommendations per user from ``mart_recommendations``
+in DuckDB and writes them to Redis hashes keyed by
+``searchflow:reco:{user_id}``.  Each hash maps destination names to
+scores, enabling O(1) lookup during live search requests.  Keys have
+a 7-day TTL and are refreshed on each sync run.
+"""
 
 from datetime import datetime
 from typing import Dict, Any, List
