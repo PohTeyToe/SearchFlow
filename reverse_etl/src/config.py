@@ -16,7 +16,7 @@ class Config:
     postgres_port: int = int(os.getenv("POSTGRES_PORT", "5432"))
     postgres_db: str = os.getenv("POSTGRES_DB", "searchflow")
     postgres_user: str = os.getenv("POSTGRES_USER", "searchflow")
-    postgres_password: str = os.getenv("POSTGRES_PASSWORD", "searchflow123")
+    postgres_password: str = os.getenv("POSTGRES_PASSWORD", "changeme")
     
     # Redis (real-time cache destination)
     redis_host: str = os.getenv("REDIS_HOST", "localhost")

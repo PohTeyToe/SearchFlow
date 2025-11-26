@@ -329,8 +329,14 @@ def build_churn_features(user_events_df: pd.DataFrame) -> pd.DataFrame:
             user_features['conversions_total'] / max(user_features['clicks_total'], 1)
         )
         
-        # Session duration (placeholder)
-        user_features['avg_session_duration_mins'] = 15.0  # Would compute from events
+        # Session duration — compute from event timestamps per session
+        session_durations = (
+            events.groupby('session_id')['timestamp']
+            .agg(lambda ts: (ts.max() - ts.min()).total_seconds() / 60.0)
+        )
+        user_features['avg_session_duration_mins'] = (
+            session_durations.mean() if len(session_durations) > 0 else 0.0
+        )
         
         # Recency
         last_event = events['timestamp'].max()

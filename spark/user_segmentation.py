@@ -175,7 +175,7 @@ def main(
     if jdbc_url:
         jdbc_properties = {
             "user": os.getenv("POSTGRES_USER", "searchflow"),
-            "password": os.getenv("POSTGRES_PASSWORD", "searchflow123"),
+            "password": os.getenv("POSTGRES_PASSWORD", "changeme"),
             "driver": "org.postgresql.Driver",
         }
 
