@@ -568,7 +568,6 @@ Conversion funnel and trend analysis
 
 *Real-time inference API with recommendations, sentiment, and churn prediction*
 
-<!-- TODO: Add screenshot of ML API docs or response -->
 <!-- ![ML API Demo](docs/images/ml-api-demo.png) -->
 
 **Endpoints:**
