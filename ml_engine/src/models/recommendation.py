@@ -262,11 +262,9 @@ class HybridRecommender:
         )
     
     def save(self, path: str):
-        """Save model to disk."""
         os.makedirs(path, exist_ok=True)
         joblib.dump(self, os.path.join(path, 'recommender.joblib'))
-    
+
     @classmethod
     def load(cls, path: str) -> 'HybridRecommender':
-        """Load model from disk."""
         return joblib.load(os.path.join(path, 'recommender.joblib'))

@@ -99,17 +99,14 @@ class TfidfSentimentModel:
         )
     
     def predict_batch(self, texts: List[str]) -> List[SentimentResult]:
-        """Predict sentiment for multiple texts."""
         return [self.predict(text) for text in texts]
-    
+
     def save(self, path: str):
-        """Save model to disk."""
         os.makedirs(path, exist_ok=True)
         joblib.dump(self.pipeline, os.path.join(path, 'sentiment_tfidf.joblib'))
-    
+
     @classmethod
     def load(cls, path: str) -> 'TfidfSentimentModel':
-        """Load model from disk."""
         model = cls()
         model.pipeline = joblib.load(os.path.join(path, 'sentiment_tfidf.joblib'))
         model.is_fitted = True
@@ -135,7 +132,6 @@ class BertSentimentModel:
         self.device = None
         
     def _init_model(self):
-        """Initialize tokenizer and model."""
         if not TRANSFORMERS_AVAILABLE:
             raise ImportError("transformers library not available")
         
@@ -265,14 +261,12 @@ class BertSentimentModel:
         )
     
     def save(self, path: str):
-        """Save model to disk."""
         os.makedirs(path, exist_ok=True)
         self.model.save_pretrained(path)
         self.tokenizer.save_pretrained(path)
-    
+
     @classmethod
     def load(cls, path: str) -> 'BertSentimentModel':
-        """Load model from disk."""
         model = cls()
         model.tokenizer = DistilBertTokenizer.from_pretrained(path)
         model.model = DistilBertForSequenceClassification.from_pretrained(path)
@@ -298,20 +292,16 @@ class SentimentAnalyzer:
             self.model = TfidfSentimentModel()
     
     def fit(self, texts: List[str], labels: List[str], **kwargs) -> 'SentimentAnalyzer':
-        """Train the sentiment model."""
         self.model.fit(texts, labels, **kwargs)
         return self
-    
+
     def predict(self, text: str) -> SentimentResult:
-        """Predict sentiment for text."""
         return self.model.predict(text)
-    
+
     def predict_batch(self, texts: List[str]) -> List[SentimentResult]:
-        """Predict sentiment for multiple texts."""
         return [self.predict(text) for text in texts]
-    
+
     def save(self, path: str):
-        """Save model to disk."""
         self.model.save(path)
         # Save config
         config = {"use_bert": self.use_bert}

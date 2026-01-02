@@ -125,6 +125,7 @@ class EmailTriggersSync:
         conn = psycopg2.connect(**self.postgres_config)
         cursor = conn.cursor()
         
+        # TODO: batch this for better performance
         queued = 0
         for user in users:
             # Check if email already queued for this user recently

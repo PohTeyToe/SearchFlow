@@ -318,7 +318,6 @@ def main(
     output_dir: str = "/data/spark_output",
     jdbc_url: Optional[str] = None,
 ) -> None:
-    """Run the session analysis pipeline."""
     spark = (
         SparkSession.builder.appName("SearchFlow-SessionAnalysis")
         .config("spark.sql.shuffle.partitions", "8")
@@ -346,6 +345,7 @@ def main(
     funnel = build_conversion_funnel(session_metrics)
     funnel.show()
 
+    # TODO: add retry logic for DB connection failures
     jdbc_properties = None
     if jdbc_url:
         jdbc_properties = {

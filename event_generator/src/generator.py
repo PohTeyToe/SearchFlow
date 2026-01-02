@@ -79,6 +79,7 @@ class EventGenerator:
         
         # Generate 1-5 searches per session
         num_searches = random.randint(1, self.config.max_searches_per_session)
+        # TODO: handle timezone-aware timestamps
         base_time = datetime.utcnow()
         
         for search_idx in range(num_searches):
@@ -222,8 +223,7 @@ class EventGenerator:
             provider=click.result_provider
         )
     
-    def _get_device_for_platform(self, platform: str) -> str:
-        """Get appropriate device type for platform."""
+    def _get_device_for_platform(self, platform):
         if platform == "web":
             return random.choice(["desktop", "mobile", "tablet"])
         elif platform in ["ios", "android"]:
@@ -231,7 +231,6 @@ class EventGenerator:
         return "desktop"
     
     def _get_campaign_for_source(self, utm_source: Optional[str]) -> Optional[str]:
-        """Generate campaign name for utm source."""
         if utm_source is None:
             return None
         
@@ -248,7 +247,6 @@ class EventGenerator:
         return random.choice(campaigns.get(utm_source, [None]))
     
     def _generate_filters(self, query: str) -> Dict[str, Any]:
-        """Generate search filters based on query."""
         filters = {}
         
         if "cheap" in query.lower():
@@ -269,22 +267,19 @@ class EventGenerator:
         return filters
     
     def _extract_destination(self, query: str) -> str:
-        """Extract destination from query string."""
         # Check if any destination is in the query
         for dest in self.config.destinations:
             if dest.lower() in query.lower():
                 return dest
         return random.choice(self.config.destinations)
     
-    def _weighted_position(self) -> int:
-        """Generate click position with power law distribution."""
+    def _weighted_position(self):
         # Most clicks happen on positions 1-5
         weights = [0.35, 0.25, 0.15, 0.10, 0.08, 0.04, 0.02, 0.01]
         positions = list(range(1, 9))
         return random.choices(positions, weights=weights)[0]
     
     def _infer_product_type(self, query: str) -> str:
-        """Infer product type from search query."""
         query_lower = query.lower()
         
         if "flight" in query_lower:
@@ -302,8 +297,7 @@ class EventGenerator:
             weights=[0.5, 0.3, 0.1, 0.1]
         )[0]
     
-    def _generate_price(self, product_type: str) -> float:
-        """Generate realistic price based on product type."""
+    def _generate_price(self, product_type):
         price_ranges = {
             "flight": (150, 1500),
             "hotel": (80, 500),

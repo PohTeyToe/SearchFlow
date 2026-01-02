@@ -393,7 +393,7 @@ async def predict_churn(user_id: str, request: ChurnRequest = ChurnRequest()):
 
 
 def get_user_features(user_id: str) -> dict:
-    """Fetch user features from warehouse (placeholder)."""
+    # TODO: replace with actual warehouse query
     # In production, this would query DuckDB
     import random
     return {
@@ -440,7 +440,7 @@ async def get_metrics():
             try:
                 with open(filepath, "r") as f:
                     metrics[name] = json.load(f)
-            except Exception:
+            except Exception:  # TODO: handle specific exceptions
                 pass
 
     return metrics

@@ -136,7 +136,6 @@ class ChurnPredictor:
         return self
     
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
-        """Get churn probabilities."""
         X_scaled = self.scaler.transform(X)
         return self.model.predict_proba(X_scaled)[:, 1]
     
@@ -158,7 +157,7 @@ class ChurnPredictor:
         # Get probability
         churn_prob = float(self.model.predict_proba(X_scaled)[0, 1])
         
-        # Get SHAP values
+        # TODO: cache SHAP values for repeated predictions on same user
         shap_values = self.explainer.shap_values(X_scaled)[0]
         
         # Get top contributing factors
@@ -195,7 +194,6 @@ class ChurnPredictor:
         user_ids: List[str],
         features_df: pd.DataFrame
     ) -> List[ChurnPrediction]:
-        """Predict churn for multiple users."""
         predictions = []
         for user_id, (_, row) in zip(user_ids, features_df.iterrows()):
             features = row.to_dict()
@@ -228,7 +226,6 @@ class ChurnPredictor:
         )
     
     def get_feature_importance(self) -> pd.DataFrame:
-        """Get feature importance scores."""
         importance = self.model.feature_importances_
         return pd.DataFrame({
             'feature': self.feature_names,
@@ -236,7 +233,6 @@ class ChurnPredictor:
         }).sort_values('importance', ascending=False)
     
     def save(self, path: str):
-        """Save model to disk."""
         os.makedirs(path, exist_ok=True)
         
         # Save XGBoost model
@@ -257,7 +253,6 @@ class ChurnPredictor:
     
     @classmethod
     def load(cls, path: str) -> 'ChurnPredictor':
-        """Load model from disk."""
         # Load config
         with open(os.path.join(path, 'config.json'), 'r') as f:
             config = json.load(f)
@@ -283,7 +278,7 @@ class ChurnPredictor:
         return predictor
 
 
-def build_churn_features(user_events_df: pd.DataFrame) -> pd.DataFrame:
+def build_churn_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Build churn prediction features from user event data.
     
@@ -299,7 +294,8 @@ def build_churn_features(user_events_df: pd.DataFrame) -> pd.DataFrame:
     
     features = []
     
-    for user_id, events in user_events_df.groupby('user_id'):
+    # FIXME: this breaks when user has no events
+    for user_id, events in df.groupby('user_id'):
         user_features = {'user_id': user_id}
         
         # Session counts

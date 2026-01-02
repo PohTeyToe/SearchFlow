@@ -74,7 +74,6 @@ class UserSegmentsSync:
             }
     
     def _extract_segments(self) -> List[tuple]:
-        """Extract user segments from warehouse."""
         conn = duckdb.connect(self.warehouse_path, read_only=True)
         
         result = conn.execute("""

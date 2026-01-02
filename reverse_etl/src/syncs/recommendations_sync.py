@@ -68,7 +68,6 @@ class RecommendationsSync:
             }
     
     def _extract_recommendations(self) -> List[Dict[str, Any]]:
-        """Extract recommendation scores from warehouse."""
         conn = duckdb.connect(self.warehouse_path, read_only=True)
         
         result = conn.execute("""
@@ -116,7 +115,7 @@ class RecommendationsSync:
                 users_data[user_id] = {}
             users_data[user_id][rec["destination"]] = rec["score"]
         
-        # Write to Redis using pipeline for efficiency
+        # TODO: add proper logging here
         pipe = self.redis_client.pipeline()
         
         for user_id, destinations in users_data.items():

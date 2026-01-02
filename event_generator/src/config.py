@@ -27,7 +27,7 @@ class Config:
     anonymous_rate: float = float(os.getenv("ANONYMOUS_RATE", "0.40"))
     
     # Session parameters
-    max_searches_per_session: int = 5
+    max_searches_per_session: int = 5  # TODO: make configurable via env var
     session_timeout_minutes: int = 30
     
     # Content variety
@@ -66,4 +66,4 @@ class Config:
 
 
 # Global config instance
-config = Config()
+cfg = Config()

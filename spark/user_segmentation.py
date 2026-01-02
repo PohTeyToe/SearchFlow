@@ -162,7 +162,7 @@ def main(
     segments = assign_segments(user_engagement)
     segments.cache()
 
-    # Log segment distribution
+    # TODO: persist previous segment for transition tracking
     segment_counts = (
         segments.groupBy("segment")
         .count()
