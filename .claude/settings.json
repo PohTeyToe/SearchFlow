@@ -1,0 +1,9 @@
+{
+  "project": "SearchFlow Analytics Platform",
+  "language": "python",
+  "style": {
+    "docstrings": "google",
+    "line_length": 88,
+    "formatter": "black"
+  }
+}
