@@ -13,6 +13,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,7 +27,7 @@ from api.schemas import (
     RecommendationRequest, RecommendationResponse, RecommendationItem,
     SentimentRequest, SentimentResponse, BatchSentimentRequest, BatchSentimentResponse,
     ChurnRequest, ChurnResponse, ChurnFactor, RiskLevel,
-    HealthResponse, SentimentLabel
+    HealthResponse, SentimentLabel, ErrorDetail, ErrorResponse,
 )
 
 # Configure logging
@@ -150,32 +151,41 @@ app.add_middleware(
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Return standardized error responses with error code and message."""
+    """Return standardized error responses with request ID for tracing."""
+    request_id = str(uuid4())
+    logger.warning(
+        "HTTP %s on %s [request_id=%s]: %s",
+        exc.status_code, request.url.path, request_id, exc.detail,
+    )
+    error = ErrorDetail(
+        code=exc.status_code,
+        message=exc.detail,
+        path=str(request.url.path),
+        request_id=request_id,
+    )
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "error": {
-                "code": exc.status_code,
-                "message": exc.detail,
-                "path": str(request.url.path),
-            }
-        },
+        content=ErrorResponse(error=error).model_dump(),
     )
 
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Catch unhandled exceptions and return a structured 500 response."""
-    logger.error("Unhandled error on %s: %s", request.url.path, exc, exc_info=True)
+    request_id = str(uuid4())
+    logger.error(
+        "Unhandled error on %s [request_id=%s]: %s",
+        request.url.path, request_id, exc, exc_info=True,
+    )
+    error = ErrorDetail(
+        code=500,
+        message="An unexpected error occurred. Use the request_id to trace logs.",
+        path=str(request.url.path),
+        request_id=request_id,
+    )
     return JSONResponse(
         status_code=500,
-        content={
-            "error": {
-                "code": 500,
-                "message": "Internal server error",
-                "path": str(request.url.path),
-            }
-        },
+        content=ErrorResponse(error=error).model_dump(),
     )
 
 
@@ -440,8 +450,8 @@ async def get_metrics():
             try:
                 with open(filepath, "r") as f:
                     metrics[name] = json.load(f)
-            except Exception:  # TODO: handle specific exceptions
-                pass
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning("Failed to load %s metrics from %s: %s", name, filepath, exc)
 
     return metrics
 

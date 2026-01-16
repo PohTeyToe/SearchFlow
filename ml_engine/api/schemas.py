@@ -118,3 +118,20 @@ class ModelInfo(BaseModel):
     loaded: bool
     path: str
     metrics: Optional[Dict[str, float]] = None
+
+
+# ============================================
+# Error Responses
+# ============================================
+
+class ErrorDetail(BaseModel):
+    """Structured error detail returned by all error handlers."""
+    code: int
+    message: str
+    path: str
+    request_id: str
+
+
+class ErrorResponse(BaseModel):
+    """Wrapper for error responses, used for OpenAPI docs."""
+    error: ErrorDetail
