@@ -1,0 +1,16 @@
+# Reverse-ETL Service Dependencies
+
+# Database connections
+duckdb>=0.9.0
+psycopg2-binary>=2.9.0
+redis>=4.5.0
+
+# Data handling
+pandas>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+click>=8.1.0
+
+# Logging
+structlog>=23.0.0

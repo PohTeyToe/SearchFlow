@@ -1,0 +1,14 @@
+# Event Generator Dependencies
+
+# Core
+redis>=4.5.0
+faker>=18.0.0
+
+# Data handling
+pydantic>=2.0.0
+
+# CLI
+click>=8.1.0
+
+# Utilities
+python-dotenv>=1.0.0

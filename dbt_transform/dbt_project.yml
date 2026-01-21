@@ -1,0 +1,63 @@
+name: 'searchflow'
+version: '1.0.0'
+config-version: 2
+
+profile: 'searchflow'
+
+# Paths
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+# Target schema
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Variables
+vars:
+  searchflow:
+    # Attribution window: how long after a search can a conversion be attributed
+    conversion_window_hours: 24
+    # Session timeout: inactivity period that ends a session
+    session_timeout_minutes: 30
+    # Minimum events for analysis
+    min_events_for_analysis: 100
+
+# Model configurations
+models:
+  searchflow:
+    # Staging models: views for fast development
+    staging:
+      +materialized: view
+      +schema: staging
+      +tags: ['staging']
+    
+    # Intermediate models: business logic transformations
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+      +tags: ['intermediate']
+    
+    # Mart models: analytics-ready tables
+    marts:
+      +materialized: table
+      +schema: analytics
+      +tags: ['marts']
+      
+      analytics:
+        +schema: analytics
+        +tags: ['analytics']
+      
+      marketing:
+        +schema: marketing
+        +tags: ['marketing', 'reverse-etl']
+
+# Test configurations
+tests:
+  searchflow:
+    +severity: warn

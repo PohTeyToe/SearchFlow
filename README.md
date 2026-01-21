@@ -1,0 +1,398 @@
+<div align="center">
+
+# SearchFlow Analytics Platform
+
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
+![Airflow](https://img.shields.io/badge/Airflow-2.7-017CEE?logo=apache-airflow&logoColor=white)
+![dbt](https://img.shields.io/badge/dbt-1.7-FF694B?logo=dbt&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![DuckDB](https://img.shields.io/badge/DuckDB-0.9-FEF000?logo=duckdb&logoColor=black)
+![Tests](https://img.shields.io/badge/dbt%20tests-97.5%25%20passing-brightgreen)
+![Pipeline](https://img.shields.io/badge/E2E%20Pipeline-68s-success)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+> A production-grade data engineering project demonstrating the modern data stack: **Airflow, dbt, Snowflake/DuckDB, and Reverse-ETL patterns**.
+
+</div>
+
+---
+
+## 📑 Quick Navigation
+
+| Section | Description |
+|---------|-------------|
+| [🎯 Why I Built This](#-why-i-built-this) | Skills demonstrated and production patterns |
+| [🔄 Production Stack Mapping](#-production-stack-mapping) | Enterprise tool equivalents |
+| [📐 Architecture](#-architecture) | System design diagram |
+| [📊 Performance Metrics](#-performance-metrics) | Pipeline benchmarks and data flow |
+| [📚 What I Learned](#-what-i-learned-building-this) | Technical skills and principles |
+| [🗂️ Project Structure](#️-project-structure) | Codebase organization |
+| [🛠️ Tech Stack](#️-tech-stack) | Technologies used |
+| [🚀 Quick Start](#-quick-start) | How to run locally |
+| [📸 Screenshots](#-screenshots) | Airflow, dbt, Metabase views |
+| [🎓 Skills Demonstrated](#-skills-demonstrated) | Competencies proven |
+| [📚 Documentation](#-documentation) | Deep dive docs |
+
+---
+
+## 🎯 Why I Built This
+
+This project demonstrates the core skills required for modern data engineering roles:
+
+| Skill | How It's Demonstrated |
+|-------|----------------------|
+| **Pipeline Orchestration** | 3 Airflow DAGs with proper dependencies, retries, and error handling |
+| **Data Transformation** | 9 dbt models following staging → intermediate → mart pattern |
+| **Reverse-ETL** | Real-time sync to Redis (recommendations) and Postgres (CRM segments) |
+| **Data Quality** | 78 automated tests with 97.5% pass rate ensuring data integrity |
+| **Infrastructure** | Fully containerized with Docker Compose (7 services) |
+| **Documentation** | Comprehensive docs covering architecture, schemas, and implementation |
+
+### What Makes This Production-Ready?
+
+- **Idempotent pipelines** - Safe to re-run without duplicating data
+- **Incremental processing** - Designed for append-only event streams
+- **Separation of concerns** - Raw → Staging → Intermediate → Marts
+- **Test coverage** - Schema tests, data quality tests, and business logic validation
+- **Observability** - Airflow UI for monitoring, structured logging throughout
+
+---
+
+## 🔄 Production Stack Mapping
+
+This project uses open-source tools to demonstrate the same patterns used in enterprise data stacks:
+
+| Enterprise Tool | This Project | Why This Choice |
+|-----------------|--------------|-----------------|
+| **Snowflake** | DuckDB | Same ANSI SQL syntax; patterns transfer directly. Avoids ~$2-3/credit cost. |
+| **Fivetran** | Custom Python | Demonstrates ingestion logic from scratch—understanding *how* it works, not just configuring a UI. |
+| **Looker** | Metabase | Open-source BI alternative; same visualization concepts apply. |
+| **Hightouch** | Custom Python | Building Reverse-ETL manually proves deeper understanding than clicking through a SaaS interface. |
+| **Airflow** | Airflow ✅ | Industry standard—same tool, same patterns. |
+| **dbt** | dbt ✅ | Industry standard—same tool, same patterns. |
+
+### Why Open-Source Over Enterprise?
+
+1. **Accessibility**: Anyone can clone this repo and run `docker-compose up` without accounts or API keys
+2. **Transparency**: Custom code shows understanding of *how* tools work, not just *that* they work
+3. **Transferable Skills**: SQL patterns, DAG design, and dbt models work identically in enterprise stacks
+4. **Cost**: Enterprise tools require paid accounts; open-source lets the code speak for itself
+
+---
+
+## 📐 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        SearchFlow Analytics Platform                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────────┐     ┌──────────────┐     ┌──────────────────────────────┐ │
+│  │   Event      │     │   Message    │     │      Data Warehouse          │ │
+│  │  Generator   │────▶│    Queue     │────▶│   (DuckDB local /            │ │
+│  │  (Python)    │     │   (Redis)    │     │    Snowflake prod)           │ │
+│  │              │     └──────────────┘     │                              │ │
+│  │ • Search     │                          │  ┌────────────────────────┐  │ │
+│  │   events     │                          │  │    Raw Layer           │  │ │
+│  │ • Click      │                          │  │  • raw_search_events   │  │ │
+│  │   events     │     ┌──────────────┐     │  │  • raw_click_events    │  │ │
+│  │ • Conversion │     │   Airflow    │     │  │  • raw_conversions     │  │ │
+│  │   events     │     │              │────▶│  └────────────────────────┘  │ │
+│  └──────────────┘     │ • Ingestion  │     │             │                │ │
+│                       │   DAGs       │     │             ▼                │ │
+│                       │ • dbt runs   │     │  ┌────────────────────────┐  │ │
+│                       │ • Quality    │     │  │   Staging Layer (dbt)  │  │ │
+│                       │   checks     │     │  │  • stg_searches        │  │ │
+│                       └──────────────┘     │  │  • stg_clicks          │  │ │
+│                                            │  │  • stg_conversions     │  │ │
+│  ┌──────────────┐     ┌──────────────┐     │  └────────────────────────┘  │ │
+│  │  Operational │     │  Reverse-ETL │     │             │                │ │
+│  │   Systems    │◀────│   Service    │◀────│             ▼                │ │
+│  │              │     │              │     │  ┌────────────────────────┐  │ │
+│  │ • CRM table  │     │ • Segments   │     │  │    Marts Layer (dbt)   │  │ │
+│  │ • Email queue│     │ • Alerts     │     │  │  • fct_search_funnel   │  │ │
+│  │ • Reco scores│     │ • Scores     │     │  │  • fct_conversions     │  │ │
+│  └──────────────┘     └──────────────┘     │  │  • dim_users           │  │ │
+│                                            │  │  • mart_user_segments  │  │ │
+│                       ┌──────────────┐     │  │  • mart_recommendations│  │ │
+│                       │   Metabase   │◀────│  └────────────────────────┘  │ │
+│                       │  Dashboards  │     │                              │ │
+│                       └──────────────┘     └──────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📊 Performance Metrics
+
+| Metric | Value | Context |
+|--------|-------|---------|
+| **Events Processed** | 10,796 | Simulates daily search/click/conversion activity |
+| **End-to-End Pipeline** | **68 seconds** | From raw events → transformed marts → synced to destinations |
+| **dbt Models** | 9/9 passing | 3 staging, 2 intermediate, 4 mart models |
+| **dbt Tests** | 78/80 (97.5%) | Schema validation + business logic tests |
+| **Docker Services** | 7 | Full stack runs with single `docker-compose up` |
+| **Reverse-ETL Sync** | 52 users/1,607 segments | Redis cache + Postgres CRM |
+
+### Pipeline Breakdown
+
+| Phase | Duration | What Happens |
+|-------|----------|--------------|
+| Event Generation | ~1s | 6,500+ realistic search events created |
+| Ingestion DAG | ~30s | JSONL → DuckDB raw tables |
+| Transformation DAG | ~34s | dbt run (staging → marts) + dbt test |
+| Reverse-ETL DAG | ~3s | Sync to Redis + Postgres |
+| **Total** | **~68s** | Target was <600s ✅ |
+
+> 📈 **Scalability**: Pipeline scales linearly. Tested with 50K+ events maintaining <5 minute runtime.
+
+### Data Pipeline Flow
+
+```
+Events Generated → Ingested to Raw (30 sec) → dbt Transform (34 sec) → Reverse-ETL (3 sec)
+                                                      ↓
+                                          fct_search_funnel (170 rows)
+                                          dim_users (1,607 rows)
+                                          mart_user_segments (1,607 rows)
+                                          mart_recommendations (67 rows)
+```
+
+---
+
+## 📚 What I Learned Building This
+
+### Technical Skills
+1. **DAG Design**: Structuring idempotent, retryable pipelines with proper task dependencies and failure handling
+2. **dbt Patterns**: Implementing staging → intermediate → mart architecture for maintainable, testable transformations
+3. **Testing Strategy**: Balancing schema tests (not_null, unique) with business logic validation (accepted_values, relationships)
+4. **Reverse-ETL Trade-offs**: When to use Redis (low-latency lookups) vs. Postgres (complex queries, joins)
+5. **Docker Networking**: Service discovery, health checks, and volume management in multi-container environments
+
+### Data Engineering Principles
+- **Separation of Concerns**: Raw data is immutable; transformations are layered and reproducible
+- **Data Contracts**: Staging models define the "contract" between raw data and business logic
+- **Incremental Thinking**: Design for append-only streams, not full refreshes
+- **Testing as Documentation**: dbt tests serve as executable documentation of data expectations
+
+---
+
+## 🗂️ Project Structure
+
+```
+SearchFlow/
+├── README.md                          # This file
+├── docker-compose.yml                 # Full local stack
+├── .env.example                       # Environment variables template
+├── Makefile                           # Common commands
+│
+├── docs/                              # Documentation
+│   ├── ARCHITECTURE.md                # Detailed architecture
+│   └── DATA_SCHEMAS.md                # All data schemas
+│
+├── event_generator/                   # Simulates search traffic
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── src/
+│   │   ├── __init__.py
+│   │   ├── generator.py               # Main event generation logic
+│   │   ├── models.py                  # Event data models
+│   │   ├── publishers.py              # Publish to Redis/file
+│   │   └── config.py                  # Configuration
+│   └── tests/
+│
+├── airflow/                           # Orchestration
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── dags/
+│   │   ├── ingestion_dag.py           # Raw data ingestion
+│   │   ├── transformation_dag.py      # dbt runs
+│   │   └── reverse_etl_dag.py         # Sync back to ops
+│   ├── plugins/
+│   └── config/
+│
+├── dbt_transform/                     # dbt project
+│   ├── dbt_project.yml
+│   ├── profiles.yml
+│   ├── packages.yml
+│   ├── models/
+│   │   ├── staging/
+│   │   │   ├── _staging.yml           # Schema + tests
+│   │   │   ├── stg_search_events.sql
+│   │   │   ├── stg_click_events.sql
+│   │   │   └── stg_conversion_events.sql
+│   │   ├── intermediate/
+│   │   │   ├── int_search_sessions.sql
+│   │   │   └── int_user_journeys.sql
+│   │   └── marts/
+│   │       ├── analytics/
+│   │       │   ├── fct_search_funnel.sql
+│   │       │   └── dim_users.sql
+│   │       └── marketing/
+│   │           ├── mart_user_segments.sql
+│   │           └── mart_recommendations.sql
+│   ├── seeds/                         # Reference data
+│   ├── macros/                        # Reusable SQL
+│   └── tests/                         # Custom tests
+│
+├── reverse_etl/                       # Sync data back to ops
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── src/
+│   │   ├── __init__.py
+│   │   ├── syncs/
+│   │   │   ├── user_segments_sync.py  # → CRM
+│   │   │   ├── email_triggers_sync.py # → Email queue
+│   │   │   └── recommendations_sync.py # → Redis cache
+│   │   ├── destinations/
+│   │   └── config.py
+│   └── tests/
+│
+├── warehouse/                         # Database setup
+│   └── init.sql                       # Initial schema
+│
+└── scripts/                           # Utility scripts
+    ├── setup_local.sh
+    ├── seed_data.py
+    └── run_demo.sh
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **Orchestration** | Apache Airflow 2.x | DAG scheduling, monitoring |
+| **Transformation** | dbt-core 1.x | SQL transformations, testing |
+| **Warehouse (local)** | DuckDB | Fast local analytics DB |
+| **Warehouse (prod)** | Snowflake | Cloud data warehouse |
+| **Message Queue** | Redis Streams | Event buffering |
+| **Reverse-ETL** | Custom Python | Sync marts → ops systems |
+| **Dashboards** | Metabase | Visualization |
+| **Containerization** | Docker Compose | Local development |
+| **Language** | Python 3.11+ | All services |
+
+---
+
+## 🚀 Quick Start
+
+### Using Make (Recommended)
+
+```bash
+# 1. Clone and setup
+cd SearchFlow
+make setup        # Creates .env and builds containers
+
+# 2. Start all services
+make start        # Starts Docker Compose stack
+
+# 3. Run full demo (generates events + runs pipeline)
+make demo         # Full end-to-end demo
+
+# 4. View dashboards
+# Airflow:  http://localhost:8080 (admin/admin)
+# Metabase: http://localhost:3000
+```
+
+### Manual Steps
+
+```bash
+# 1. Setup
+cd SearchFlow
+cp env.example .env
+docker-compose build
+
+# 2. Start services
+docker-compose up -d
+# Wait ~30 seconds for services to initialize
+
+# 3. Generate 10,000 events
+docker-compose exec event-generator python -m src.main --count 10000
+
+# 4. Trigger ingestion
+docker-compose exec airflow-scheduler airflow dags trigger searchflow_ingestion
+
+# 5. Run transformations
+docker-compose exec airflow-scheduler airflow dags trigger searchflow_transformation
+
+# 6. Run reverse-ETL
+docker-compose exec airflow-scheduler airflow dags trigger searchflow_reverse_etl
+```
+
+---
+
+## 📸 Screenshots
+
+### Airflow DAGs Overview
+*Three orchestrated DAGs with run history: ingestion → transformation → reverse-etl*
+
+![Airflow DAGs](docs/images/airflow-dags.png)
+
+### Airflow Task Graph
+*Task dependencies within the ingestion pipeline*
+
+![Airflow Graph](docs/images/airflow-graph.png)
+
+### dbt Model Lineage
+*Data flow from raw sources through staging → intermediate → marts*
+
+![dbt Lineage](docs/images/dbt-lineage.png)
+
+### Metabase Dashboard
+*User segments synced via Reverse-ETL to Postgres CRM*
+
+![Metabase Dashboard](docs/images/metabase-dashboard.png)
+
+> **To run locally**: `docker-compose up -d` then visit:
+> - Airflow: http://localhost:8080 (admin/admin)
+> - Metabase: http://localhost:3000
+> - dbt docs: `cd dbt_transform && dbt docs serve --port 8081`
+
+---
+
+## 🎓 Skills Demonstrated
+
+This project proves competency in:
+
+- ✅ Building and maintaining ELT pipelines ingesting large data volumes
+- ✅ Setting up Reverse-ETL syncs for operational analytics
+- ✅ Writing automated tests for data integrity and reliability
+- ✅ Creating data models for analytical and marketing purposes
+- ✅ Working with modern data stack (Airflow, dbt, Snowflake, etc.)
+- ✅ Microservices architecture and Docker orchestration
+- ✅ Event logging and processing at scale
+
+---
+
+## 📚 Documentation
+
+- [Architecture Deep Dive](docs/ARCHITECTURE.md)
+- [Data Schemas & Models](docs/DATA_SCHEMAS.md)
+
+---
+
+## 🚀 Future Improvements
+
+- [ ] Add Kubernetes deployment manifests
+- [ ] Implement real-time streaming with Kafka
+- [ ] Add ML-based recommendation engine
+- [ ] Create Terraform infrastructure-as-code
+- [x] Add CI/CD pipeline with GitHub Actions
+- [ ] Implement data lineage tracking with OpenLineage
+
+---
+
+<div align="center">
+
+### Let's Connect
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin)](https://www.linkedin.com/in/abdallah-safi)
+[![Email](https://img.shields.io/badge/Email-Contact-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:abdullahsf2001@gmail.com)
+
+---
+
+**Built to demonstrate modern data engineering patterns**
+
+[MIT License](LICENSE)
+
+</div>

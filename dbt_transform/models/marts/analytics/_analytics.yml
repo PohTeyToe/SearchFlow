@@ -1,0 +1,99 @@
+version: 2
+
+models:
+  - name: fct_search_funnel
+    description: |
+      Daily funnel metrics aggregated by key dimensions.
+      Primary analytics fact table for search performance analysis.
+    
+    columns:
+      - name: funnel_date
+        description: "Date of the funnel data"
+        tests:
+          - not_null
+      
+      - name: total_sessions
+        description: "Number of unique sessions"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      
+      - name: total_searches
+        description: "Total search events"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      
+      - name: total_clicks
+        description: "Total click events"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      
+      - name: total_conversions
+        description: "Total conversions"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      
+      - name: click_through_rate
+        description: "Clicks / Searches"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 1
+      
+      - name: conversion_rate
+        description: "Conversions / Clicks"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 1
+    
+    tests:
+      # Funnel logic: clicks can't exceed searches
+      - dbt_utils.expression_is_true:
+          expression: "total_clicks <= total_searches * 5"
+      
+      # Funnel logic: conversions can't exceed clicks
+      - dbt_utils.expression_is_true:
+          expression: "total_conversions <= total_clicks"
+
+  - name: dim_users
+    description: |
+      User dimension with lifetime metrics.
+      Powers user segmentation, LTV analysis, and cohort analysis.
+    
+    columns:
+      - name: user_id
+        description: "Unique user identifier"
+        tests:
+          - unique
+          - not_null
+      
+      - name: first_seen_at
+        description: "First activity timestamp"
+        tests:
+          - not_null
+      
+      - name: total_sessions
+        description: "Lifetime session count"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+      
+      - name: lifetime_revenue
+        description: "Total revenue from this user"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      
+      - name: lifetime_ctr
+        description: "Lifetime click-through rate"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 1

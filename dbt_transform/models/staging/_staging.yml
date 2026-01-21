@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: stg_search_events
+    description: "Cleaned and typed search events"
+    columns:
+      - name: event_id
+        description: "Unique identifier for the search event"
+        tests:
+          - unique
+          - not_null
+      - name: event_timestamp
+        description: "When the search occurred"
+        tests:
+          - not_null
+      - name: session_id
+        description: "Session identifier for grouping user activity"
+        tests:
+          - not_null
+      - name: search_query
+        description: "The user's search query (lowercased, trimmed)"
+        tests:
+          - not_null
+      - name: platform
+        description: "Platform: web, ios, android"
+        tests:
+          - accepted_values:
+              values: ['web', 'ios', 'android']
+      - name: device_type
+        description: "Device type: desktop, mobile, tablet"
+        tests:
+          - accepted_values:
+              values: ['desktop', 'mobile', 'tablet']
+
+  - name: stg_click_events
+    description: "Cleaned and typed click events"
+    columns:
+      - name: event_id
+        description: "Unique identifier for the click event"
+        tests:
+          - unique
+          - not_null
+      - name: search_event_id
+        description: "Reference to the search that produced this click"
+        tests:
+          - not_null
+      - name: result_position
+        description: "Position of clicked result (1-indexed)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 100
+      - name: result_type
+        description: "Type of result: flight, hotel, car, package"
+        tests:
+          - accepted_values:
+              values: ['flight', 'hotel', 'car', 'package']
+
+  - name: stg_conversion_events
+    description: "Cleaned and typed conversion/booking events"
+    columns:
+      - name: event_id
+        description: "Unique identifier for the conversion event"
+        tests:
+          - unique
+          - not_null
+      - name: click_event_id
+        description: "Reference to the click that led to conversion"
+        tests:
+          - not_null
+      - name: booking_value
+        description: "Total booking value"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: commission
+        description: "Commission earned"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
