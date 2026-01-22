@@ -6,11 +6,77 @@ serialization to dict and JSON for publishing to files, Redis, or
 the console.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TypedDict, Union
 from uuid import uuid4
 import json
+
+
+# ============================================
+# Typed dict shapes for serialized events
+# ============================================
+
+class GeoDict(TypedDict):
+    """Geographic location attached to a search event."""
+    country: str
+    city: str
+
+
+class SearchEventDict(TypedDict):
+    """Shape returned by SearchEvent.to_dict()."""
+    event_id: str
+    event_type: str
+    timestamp: str
+    user_id: Optional[str]
+    session_id: str
+    query: str
+    results_count: int
+    page: int
+    platform: str
+    device_type: str
+    geo: GeoDict
+    utm_source: Optional[str]
+    utm_medium: Optional[str]
+    utm_campaign: Optional[str]
+    filters: Dict[str, Any]
+
+
+class ClickEventDict(TypedDict):
+    """Shape returned by ClickEvent.to_dict()."""
+    event_id: str
+    event_type: str
+    timestamp: str
+    user_id: Optional[str]
+    session_id: str
+    search_event_id: str
+    result_position: int
+    result_id: str
+    result_type: str
+    result_price: float
+    result_provider: str
+    result_destination: str
+
+
+class ConversionEventDict(TypedDict):
+    """Shape returned by ConversionEvent.to_dict()."""
+    event_id: str
+    event_type: str
+    timestamp: str
+    user_id: Optional[str]
+    session_id: str
+    click_event_id: str
+    booking_value: float
+    commission: float
+    currency: str
+    product_type: str
+    provider: str
+
+
+# Union of all serialized event shapes
+EventDict = Union[SearchEventDict, ClickEventDict, ConversionEventDict]
 
 
 @dataclass
@@ -34,29 +100,26 @@ class SearchEvent:
     utm_campaign: Optional[str] = None
     filters: Optional[Dict[str, Any]] = None
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> SearchEventDict:
         """Convert to dictionary for JSON serialization."""
-        return {
-            "event_id": self.event_id,
-            "event_type": self.event_type,
-            "timestamp": self.timestamp.isoformat() + "Z",
-            "user_id": self.user_id,
-            "session_id": self.session_id,
-            "query": self.query,
-            "results_count": self.results_count,
-            "page": self.page,
-            "platform": self.platform,
-            "device_type": self.device_type,
-            "geo": {
-                "country": self.geo_country,
-                "city": self.geo_city
-            },
-            "utm_source": self.utm_source,
-            "utm_medium": self.utm_medium,
-            "utm_campaign": self.utm_campaign,
-            "filters": self.filters or {}
-        }
-    
+        return SearchEventDict(
+            event_id=self.event_id,
+            event_type=self.event_type,
+            timestamp=self.timestamp.isoformat() + "Z",
+            user_id=self.user_id,
+            session_id=self.session_id,
+            query=self.query,
+            results_count=self.results_count,
+            page=self.page,
+            platform=self.platform,
+            device_type=self.device_type,
+            geo=GeoDict(country=self.geo_country, city=self.geo_city),
+            utm_source=self.utm_source,
+            utm_medium=self.utm_medium,
+            utm_campaign=self.utm_campaign,
+            filters=self.filters or {},
+        )
+
     def to_json(self) -> str:
         """Convert to JSON string."""
         return json.dumps(self.to_dict())
@@ -79,23 +142,23 @@ class ClickEvent:
     user_id: Optional[str] = None
     result_provider: str = "default"
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> ClickEventDict:
         """Convert to dictionary for JSON serialization."""
-        return {
-            "event_id": self.event_id,
-            "event_type": self.event_type,
-            "timestamp": self.timestamp.isoformat() + "Z",
-            "user_id": self.user_id,
-            "session_id": self.session_id,
-            "search_event_id": self.search_event_id,
-            "result_position": self.result_position,
-            "result_id": self.result_id,
-            "result_type": self.result_type,
-            "result_price": self.result_price,
-            "result_provider": self.result_provider,
-            "result_destination": self.result_destination
-        }
-    
+        return ClickEventDict(
+            event_id=self.event_id,
+            event_type=self.event_type,
+            timestamp=self.timestamp.isoformat() + "Z",
+            user_id=self.user_id,
+            session_id=self.session_id,
+            search_event_id=self.search_event_id,
+            result_position=self.result_position,
+            result_id=self.result_id,
+            result_type=self.result_type,
+            result_price=self.result_price,
+            result_provider=self.result_provider,
+            result_destination=self.result_destination,
+        )
+
     def to_json(self) -> str:
         """Convert to JSON string."""
         return json.dumps(self.to_dict())
@@ -117,22 +180,22 @@ class ConversionEvent:
     currency: str = "CAD"
     provider: str = "default"
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> ConversionEventDict:
         """Convert to dictionary for JSON serialization."""
-        return {
-            "event_id": self.event_id,
-            "event_type": self.event_type,
-            "timestamp": self.timestamp.isoformat() + "Z",
-            "user_id": self.user_id,
-            "session_id": self.session_id,
-            "click_event_id": self.click_event_id,
-            "booking_value": self.booking_value,
-            "commission": self.commission,
-            "currency": self.currency,
-            "product_type": self.product_type,
-            "provider": self.provider
-        }
-    
+        return ConversionEventDict(
+            event_id=self.event_id,
+            event_type=self.event_type,
+            timestamp=self.timestamp.isoformat() + "Z",
+            user_id=self.user_id,
+            session_id=self.session_id,
+            click_event_id=self.click_event_id,
+            booking_value=self.booking_value,
+            commission=self.commission,
+            currency=self.currency,
+            product_type=self.product_type,
+            provider=self.provider,
+        )
+
     def to_json(self) -> str:
         """Convert to JSON string."""
         return json.dumps(self.to_dict())
