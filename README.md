@@ -40,8 +40,7 @@ cd SearchFlow && docker-compose up -d
 # Dashboard: http://localhost:5173 | Airflow: http://localhost:8080 | ML API: http://localhost:8000
 ```
 
-<!-- TODO: Add hero screenshot/GIF of dashboard here -->
-<!-- ![Dashboard Demo](docs/assets/dashboard-demo.gif) -->
+![SearchFlow Dashboard](docs/images/dashboard-dark.png)
 
 ---
 
@@ -456,7 +455,7 @@ cd dashboard && npm install && npm run dev
 ### React Dashboard
 *Modern React + TypeScript dashboard with 38 reusable components*
 
-![Dashboard Dark Mode](dashboard/public/screenshots/dashboard-dark.png)
+![Dashboard Dark Mode](docs/images/dashboard-dark.png)
 
 **Features:**
 - 🎨 38 reusable React components
