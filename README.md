@@ -5,6 +5,8 @@
 ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
 ![Airflow](https://img.shields.io/badge/Airflow-2.7-017CEE?logo=apache-airflow&logoColor=white)
 ![dbt](https://img.shields.io/badge/dbt-1.7-FF694B?logo=dbt&logoColor=white)
+![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![DuckDB](https://img.shields.io/badge/DuckDB-0.9-FEF000?logo=duckdb&logoColor=black)
 ![Tests](https://img.shields.io/badge/dbt%20tests-97.5%25%20passing-brightgreen)
@@ -250,6 +252,20 @@ SearchFlow/
 ├── warehouse/                         # Database setup
 │   └── init.sql                       # Initial schema
 │
+├── dashboard/                         # React Dashboard (NEW)
+│   ├── src/
+│   │   ├── components/                # 38 reusable React components
+│   │   │   ├── ui/                    # Button, Card, Modal, etc.
+│   │   │   ├── charts/                # LineChart, FunnelChart, etc.
+│   │   │   ├── pipeline/              # DAGCard, PipelineStatus
+│   │   │   └── metrics/               # StatCard, DataQualityPanel
+│   │   ├── pages/                     # Dashboard, Pipelines, Metrics, Search
+│   │   ├── stores/                    # Zustand state management
+│   │   ├── hooks/                     # React Query data fetching
+│   │   └── services/                  # Mock API for development
+│   ├── package.json
+│   └── vite.config.ts
+│
 └── scripts/                           # Utility scripts
     ├── setup_local.sh
     ├── seed_data.py
@@ -268,9 +284,12 @@ SearchFlow/
 | **Warehouse (prod)** | Snowflake | Cloud data warehouse |
 | **Message Queue** | Redis Streams | Event buffering |
 | **Reverse-ETL** | Custom Python | Sync marts → ops systems |
-| **Dashboards** | Metabase | Visualization |
+| **Dashboard** | React 18 + TypeScript | Real-time monitoring UI |
+| **State Management** | Zustand | Lightweight state management |
+| **Visualizations** | Recharts | Analytics charts & graphs |
+| **Dashboards** | Metabase | BI Visualization |
 | **Containerization** | Docker Compose | Local development |
-| **Language** | Python 3.11+ | All services |
+| **Language** | Python 3.11+ / TypeScript 5.6 | All services |
 
 ---
 
@@ -317,6 +336,10 @@ docker-compose exec airflow-scheduler airflow dags trigger searchflow_transforma
 
 # 6. Run reverse-ETL
 docker-compose exec airflow-scheduler airflow dags trigger searchflow_reverse_etl
+
+# 7. Start React Dashboard (optional)
+cd dashboard && npm install && npm run dev
+# Open http://localhost:5173
 ```
 
 ---
@@ -345,8 +368,21 @@ docker-compose exec airflow-scheduler airflow dags trigger searchflow_reverse_et
 
 > **To run locally**: `docker-compose up -d` then visit:
 > - Airflow: http://localhost:8080 (admin/admin)
+> - Dashboard: http://localhost:5173 (run `cd dashboard && npm run dev`)
 > - Metabase: http://localhost:3000
 > - dbt docs: `cd dbt_transform && dbt docs serve --port 8081`
+
+### React Dashboard
+*Modern React + TypeScript dashboard with 38 reusable components*
+
+![Dashboard Dark Mode](dashboard/public/screenshots/dashboard-dark.png)
+
+**Features:**
+- 🎨 38 reusable React components
+- 🔍 Real-time search with 300ms debounced queries
+- 📊 Interactive Recharts visualizations
+- 🌙 Dark/light mode with system preference detection
+- ⚡ Zustand state management + React Query data fetching
 
 ---
 
