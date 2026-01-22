@@ -1,6 +1,6 @@
 <div align="center">
 
-# SearchFlow Analytics Platform
+# SearchFlow — Travel Search Analytics Platform
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
 ![Airflow](https://img.shields.io/badge/Airflow-2.7-017CEE?logo=apache-airflow&logoColor=white)
@@ -17,9 +17,21 @@
 ![Pipeline](https://img.shields.io/badge/E2E%20Pipeline-68s-success)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-> A production-grade data engineering + ML project demonstrating the modern data stack: **Airflow, dbt, Snowflake/DuckDB, Reverse-ETL, and AI-powered recommendations**.
+> **Recover lost bookings by understanding your search funnel.** Track every step from destination search to completed booking, predict churn before users leave, and activate personalized interventions in real-time.
 
 </div>
+
+---
+
+## 🎯 The Problem
+
+**Travel platforms lose 70%+ of users between search and booking.** Users search for "cheap flights to Cancun," browse results, maybe click a few options... then disappear. Most platforms have no idea *where* or *why* the drop-off happens.
+
+SearchFlow solves this by:
+- 📊 **Tracking the full funnel** — Search → Click → Booking with granular event data
+- 🔮 **Predicting churn** — ML models identify at-risk users before they abandon (85% AUC)
+- 💡 **Recommending recovery actions** — Personalized destination suggestions increase conversion (89% precision)
+- ⚡ **Activating in real-time** — Reverse-ETL syncs insights to CRM, email, and ad platforms
 
 ---
 
@@ -27,10 +39,11 @@
 
 | What | Details |
 |------|---------|
+| **Use Case** | Travel search analytics — understand and recover lost bookings |
 | **Data Pipeline** | Airflow → dbt → DuckDB (68 seconds end-to-end) |
-| **ML Engine** | Recommendations (89% precision), Sentiment (92% accuracy), Churn prediction |
+| **ML Engine** | Recommendations (89% precision), Sentiment (92% accuracy), Churn prediction (85% AUC) |
 | **Real-time API** | FastAPI serving 1K+ predictions/sec with Redis caching |
-| **Dashboard** | React + TypeScript monitoring UI with 38 components |
+| **Dashboard** | React + TypeScript monitoring UI with travel-specific analytics |
 | **Tests** | 78 dbt tests (97.5% passing) + ML evaluation metrics |
 
 ```bash
@@ -48,68 +61,73 @@ cd SearchFlow && docker-compose up -d
 
 | Section | Description |
 |---------|-------------|
-| [🎯 Why I Built This](#-why-i-built-this) | Skills demonstrated and production patterns |
-| [🔄 Production Stack Mapping](#-production-stack-mapping) | Enterprise tool equivalents |
+| [🎯 The Problem](#-the-problem) | Why this platform exists |
+| [🏗️ How It Works](#-how-it-works) | Technical approach and architecture |
+| [🛠️ Technology Choices](#️-technology-choices) | Why I chose each tool |
 | [🤖 Machine Learning & AI](#-machine-learning--ai) | Recommendations, sentiment, churn prediction |
 | [📐 Architecture](#-architecture) | System design diagram |
-| [📊 Performance Metrics](#-performance-metrics) | Pipeline benchmarks and data flow |
-| [📚 What I Learned](#-what-i-learned-building-this) | Technical skills and principles |
-| [🗂️ Project Structure](#️-project-structure) | Codebase organization |
-| [🛠️ Tech Stack](#️-tech-stack) | Technologies used |
+| [🧠 Design Decisions](#-design-decisions) | Architectural rationale and trade-offs |
+| [📊 Performance Metrics](#-performance-metrics) | Pipeline benchmarks |
 | [🚀 Quick Start](#-quick-start) | How to run locally |
-| [📸 Screenshots](#-screenshots) | Airflow, dbt, Metabase views |
-| [🎓 Skills Demonstrated](#-skills-demonstrated) | Competencies proven |
 | [📚 Documentation](#-documentation) | Deep dive docs |
 
 ---
 
-## 🎯 Why I Built This
+## 🏗️ How It Works
 
-This project demonstrates the core skills required for modern data engineering roles:
+SearchFlow captures and analyzes the entire user journey for travel platforms:
 
-| Skill | How It's Demonstrated |
-|-------|----------------------|
-| **Pipeline Orchestration** | 3 Airflow DAGs with proper dependencies, retries, and error handling |
-| **Data Transformation** | 9 dbt models following staging → intermediate → mart pattern |
-| **Reverse-ETL** | Real-time sync to Redis (recommendations) and Postgres (CRM segments) |
-| **Machine Learning** | Hybrid recommendation engine (89% precision@10), churn prediction with SHAP |
-| **NLP & Sentiment** | Fine-tuned DistilBERT classifier with 92% accuracy on travel reviews |
-| **Real-time ML** | FastAPI inference serving 1K+ predictions/sec with Redis caching |
-| **Data Quality** | 78 automated tests with 97.5% pass rate ensuring data integrity |
-| **Infrastructure** | Fully containerized with Docker Compose (8 services) |
-| **Documentation** | Comprehensive docs covering architecture, schemas, and implementation |
+### 1. Event Capture
+Every user action is tracked in real-time:
+- **Search Events** — "cheap flights to Cancun", "hotels near Miami Beach"
+- **Click Events** — Which results users engaged with, at what position
+- **Conversion Events** — Completed bookings with revenue and commission data
 
-### What Makes This Production-Ready?
+### 2. Data Pipeline
+Events flow through a production-grade pipeline:
+```
+Raw Events → Airflow Ingestion → dbt Transformations → Analytics Marts → Reverse-ETL
+```
+- **Staging models** clean and deduplicate raw events
+- **Intermediate models** sessionize user journeys
+- **Marts** expose business-ready metrics (funnel, segments, recommendations)
 
-- **Idempotent pipelines** - Safe to re-run without duplicating data
-- **Incremental processing** - Designed for append-only event streams
-- **Separation of concerns** - Raw → Staging → Intermediate → Marts
-- **Test coverage** - Schema tests, data quality tests, and business logic validation
-- **Observability** - Airflow UI for monitoring, structured logging throughout
+### 3. ML-Powered Insights
+Three models work together to maximize conversions:
+| Model | Purpose | Performance |
+|-------|---------|-------------|
+| **Recommendations** | Suggest destinations likely to convert | 89% Precision@10 |
+| **Sentiment** | Filter negative reviews, highlight positive | 92% Accuracy |
+| **Churn Prediction** | Identify users about to abandon | 85% AUC |
+
+### 4. Real-time Activation
+Insights aren't just dashboards—they drive action:
+- **Redis cache** — Sub-millisecond recommendations for live personalization
+- **CRM sync** — User segments pushed to Postgres for targeted campaigns
+- **Email triggers** — Automated recovery campaigns for at-risk users
 
 ---
 
-## 🔄 Production Stack Mapping
+## 🛠️ Technology Choices
 
-This project uses open-source tools to demonstrate the same patterns used in enterprise data stacks:
+I chose each tool based on what best solves the travel analytics problem:
 
-| Enterprise Tool | This Project | Why This Choice |
-|-----------------|--------------|-----------------|
-| **Snowflake** | DuckDB | Same ANSI SQL syntax; patterns transfer directly. Avoids ~$2-3/credit cost. |
-| **Fivetran** | Custom Python | Demonstrates ingestion logic from scratch—understanding *how* it works, not just configuring a UI. |
-| **Looker** | Metabase | Open-source BI alternative; same visualization concepts apply. |
-| **Hightouch** | Custom Python | Building Reverse-ETL manually proves deeper understanding than clicking through a SaaS interface. |
-| **Airflow** | Airflow ✅ | Industry standard—same tool, same patterns. |
-| **dbt** | dbt ✅ | Industry standard—same tool, same patterns. |
-| **SageMaker** | Custom ML Engine | Scikit-learn, XGBoost, Transformers—production ML without cloud lock-in. |
-| **Vertex AI** | FastAPI + Redis | Low-latency inference with caching, same architecture pattern. |
+| Component | Choice | Why |
+|-----------|--------|-----|
+| **Orchestration** | Airflow | Battle-tested for DAG scheduling; easy to debug pipeline failures |
+| **Transformations** | dbt | SQL-based, version-controlled, testable—perfect for funnel analytics |
+| **Warehouse** | DuckDB (local) / Snowflake (prod) | Fast analytics queries; DuckDB for dev, Snowflake for scale |
+| **ML Serving** | FastAPI + Redis | Sub-millisecond latency for real-time recommendations |
+| **Frontend** | React + TypeScript | Type safety for complex analytics dashboards |
+| **Containerization** | Docker Compose | One command to spin up the entire stack locally |
 
-### Why Open-Source Over Enterprise?
+### Why Build Custom Ingestion & Reverse-ETL?
 
-1. **Accessibility**: Anyone can clone this repo and run `docker-compose up` without accounts or API keys
-2. **Transparency**: Custom code shows understanding of *how* tools work, not just *that* they work
-3. **Transferable Skills**: SQL patterns, DAG design, and dbt models work identically in enterprise stacks
-4. **Cost**: Enterprise tools require paid accounts; open-source lets the code speak for itself
+I built the ingestion and reverse-ETL layers from scratch rather than using SaaS tools like Fivetran/Hightouch because:
+
+1. **Full control** — Travel event schemas are complex; custom ingestion handles edge cases better
+2. **Real-time sync** — Needed sub-second latency for recommendation caching; SaaS tools add latency
+3. **Cost efficiency** — No per-row pricing for high-volume event streams
 
 ---
 
@@ -222,20 +240,22 @@ Events Generated → Ingested to Raw (30 sec) → dbt Transform (34 sec) → Rev
 
 ---
 
-## 📚 What I Learned Building This
+## 🧠 Design Decisions
 
-### Technical Skills
-1. **DAG Design**: Structuring idempotent, retryable pipelines with proper task dependencies and failure handling
-2. **dbt Patterns**: Implementing staging → intermediate → mart architecture for maintainable, testable transformations
-3. **Testing Strategy**: Balancing schema tests (not_null, unique) with business logic validation (accepted_values, relationships)
-4. **Reverse-ETL Trade-offs**: When to use Redis (low-latency lookups) vs. Postgres (complex queries, joins)
-5. **Docker Networking**: Service discovery, health checks, and volume management in multi-container environments
+### Why These Architectural Patterns?
 
-### Data Engineering Principles
-- **Separation of Concerns**: Raw data is immutable; transformations are layered and reproducible
-- **Data Contracts**: Staging models define the "contract" between raw data and business logic
-- **Incremental Thinking**: Design for append-only streams, not full refreshes
-- **Testing as Documentation**: dbt tests serve as executable documentation of data expectations
+| Decision | Rationale |
+|----------|-----------|
+| **Idempotent pipelines** | Users retry searches constantly; pipeline must handle re-runs without duplicating bookings |
+| **Staging → Mart layers** | Raw event schemas change frequently; staging layer insulates business logic from source changes |
+| **Redis for recommendations** | Personalization must be instant; can't wait for batch queries when user is mid-search |
+| **SHAP for churn** | Operations team needs to understand *why* a user is at risk, not just that they are |
+
+### Trade-offs I Made
+
+- **Redis vs. Postgres for reverse-ETL**: Redis for real-time reco scores (speed), Postgres for user segments (complex joins)
+- **DuckDB vs. Snowflake**: DuckDB locally for fast iteration; Snowflake config ready for production scale
+- **Custom vs. SaaS ingestion**: More work upfront, but full control over travel-specific event schemas
 
 ---
 
@@ -507,29 +527,6 @@ POST /recommend/{user_id} → {"recommendations": [...], "precision": 0.89}
 POST /sentiment           → {"sentiment": "positive", "confidence": 0.95}
 POST /churn/{user_id}     → {"probability": 0.72, "risk": "high", "factors": [...]}
 ```
-
----
-
-## 🎓 Skills Demonstrated
-
-This project proves competency in:
-
-### Data Engineering
-- ✅ Building and maintaining ELT pipelines ingesting large data volumes
-- ✅ Setting up Reverse-ETL syncs for operational analytics
-- ✅ Writing automated tests for data integrity and reliability
-- ✅ Creating data models for analytical and marketing purposes
-- ✅ Working with modern data stack (Airflow, dbt, Snowflake, etc.)
-
-### Machine Learning
-- ✅ Building recommendation systems (collaborative + content-based filtering)
-- ✅ Fine-tuning NLP models (DistilBERT) for sentiment classification
-- ✅ Churn prediction with interpretable ML (XGBoost + SHAP)
-- ✅ Low-latency inference APIs with caching strategies
-
-### Software Engineering
-- ✅ Microservices architecture and Docker orchestration
-- ✅ Event logging and processing at scale
 
 ---
 

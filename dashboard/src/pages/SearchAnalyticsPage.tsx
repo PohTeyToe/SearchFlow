@@ -28,11 +28,11 @@ export const SearchAnalyticsPage: React.FC = () => {
     const avgClickRate = totalSearches > 0 ? ((totalClicks / totalSearches) * 100) : 0;
     const avgConversionRate = totalSearches > 0 ? ((totalConversions / totalSearches) * 100) : 0;
 
-    // Funnel chart data
+    // Funnel chart data with travel labels
     const funnelChartData = [
         { name: 'Searches', value: totalSearches, fill: '#3b82f6' },
-        { name: 'Clicks', value: totalClicks, fill: '#8b5cf6' },
-        { name: 'Conversions', value: totalConversions, fill: '#10b981' },
+        { name: 'Views', value: totalClicks, fill: '#8b5cf6' },
+        { name: 'Bookings', value: totalConversions, fill: '#10b981' },
     ];
 
     const handleSearch = useCallback((query: string) => {
@@ -41,8 +41,8 @@ export const SearchAnalyticsPage: React.FC = () => {
 
     return (
         <MainLayout
-            title="Search Analytics"
-            subtitle="Analyze search behavior and conversion funnels"
+            title="Destination Analytics"
+            subtitle="Understand travel search behavior and booking conversions"
         >
             {/* Search Bar */}
             <div className="mb-6">
@@ -60,7 +60,7 @@ export const SearchAnalyticsPage: React.FC = () => {
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <StatCard
-                    title="Total Searches"
+                    title="Destination Searches"
                     value={totalSearches}
                     trend={{ value: 7.3, label: 'vs last week' }}
                     icon={<Search className="w-6 h-6" />}
@@ -72,7 +72,7 @@ export const SearchAnalyticsPage: React.FC = () => {
                     icon={<TrendingUp className="w-6 h-6" />}
                 />
                 <StatCard
-                    title="Conversion Rate"
+                    title="Booking Rate"
                     value={`${avgConversionRate.toFixed(1)}%`}
                     trend={{ value: 1.5, label: 'vs last week' }}
                     icon={<BarChart3 className="w-6 h-6" />}
@@ -96,8 +96,8 @@ export const SearchAnalyticsPage: React.FC = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         {/* Funnel */}
                         <ChartContainer
-                            title="Conversion Funnel"
-                            subtitle="Last 7 days"
+                            title="Booking Funnel"
+                            subtitle="Search → View → Book (Last 7 days)"
                             isLoading={funnelLoading}
                         >
                             <HorizontalFunnel data={funnelChartData} />
@@ -119,8 +119,8 @@ export const SearchAnalyticsPage: React.FC = () => {
                                     }))}
                                     areas={[
                                         { dataKey: 'searches', name: 'Searches', color: '#3b82f6' },
-                                        { dataKey: 'clicks', name: 'Clicks', color: '#8b5cf6' },
-                                        { dataKey: 'conversions', name: 'Conversions', color: '#10b981' },
+                                        { dataKey: 'clicks', name: 'Views', color: '#8b5cf6' },
+                                        { dataKey: 'conversions', name: 'Bookings', color: '#10b981' },
                                     ]}
                                     xAxisKey="date"
                                     height={250}
