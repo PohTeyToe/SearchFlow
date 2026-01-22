@@ -165,6 +165,36 @@ services:
     command: sleep infinity
 
   # ============================================
+  # ML ENGINE
+  # ============================================
+  
+  ml-engine:
+    build:
+      context: ./ml_engine
+      dockerfile: Dockerfile
+    container_name: searchflow-ml-engine
+    environment:
+      DUCKDB_PATH: /data/searchflow.duckdb
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MODEL_PATH: /app/models
+      CACHE_TTL: 3600
+    volumes:
+      - ./data:/data
+      - ./ml_engine/models:/app/models
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    networks:
+      - searchflow-network
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
   # VISUALIZATION
   # ============================================
   
