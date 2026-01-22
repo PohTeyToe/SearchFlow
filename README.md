@@ -426,43 +426,72 @@ cd dashboard && npm install && npm run dev
 
 ## 📸 Screenshots
 
-### Airflow DAGs Overview
-*Three orchestrated DAGs with run history: ingestion → transformation → reverse-etl*
-
-![Airflow DAGs](docs/images/airflow-dags.png)
-
-### Airflow Task Graph
-*Task dependencies within the ingestion pipeline*
-
-![Airflow Graph](docs/images/airflow-graph.png)
-
-### dbt Model Lineage
-*Data flow from raw sources through staging → intermediate → marts*
-
-![dbt Lineage](docs/images/dbt-lineage.png)
-
-### Metabase Dashboard
-*User segments synced via Reverse-ETL to Postgres CRM*
-
-![Metabase Dashboard](docs/images/metabase-dashboard.png)
-
-> **To run locally**: `docker-compose up -d` then visit:
-> - Airflow: http://localhost:8080 (admin/admin)
-> - Dashboard: http://localhost:5173 (run `cd dashboard && npm run dev`)
-> - Metabase: http://localhost:3000
-> - dbt docs: `cd dbt_transform && dbt docs serve --port 8081`
-
 ### React Dashboard
-*Modern React + TypeScript dashboard with 38 reusable components*
 
-![Dashboard Dark Mode](docs/images/dashboard-dark.png)
+<table>
+<tr>
+<td width="50%">
 
-**Features:**
+**Dashboard Overview**
+
+![Dashboard](docs/images/dashboard-home.png)
+
+KPI cards, search funnel, pipeline status
+
+</td>
+<td width="50%">
+
+**Pipelines Management**
+
+![Pipelines](docs/images/pipelines.png)
+
+Airflow DAG monitoring with run history
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Metrics & Data Quality**
+
+![Metrics](docs/images/metrics.png)
+
+Test pass rates, record counts by table
+
+</td>
+<td width="50%">
+
+**Search Analytics**
+
+![Search](docs/images/search-analytics.png)
+
+Conversion funnel and trend analysis
+
+</td>
+</tr>
+</table>
+
+**Dashboard Features:**
 - 🎨 38 reusable React components
-- 🔍 Real-time search with 300ms debounced queries
+- 🔍 Real-time search with debounced queries
 - 📊 Interactive Recharts visualizations
-- 🌙 Dark/light mode with system preference detection
-- ⚡ Zustand state management + React Query data fetching
+- 🌙 Dark/light mode toggle
+- ⚡ Zustand + React Query
+
+---
+
+### Data Pipeline UIs
+
+| Airflow DAGs | dbt Lineage | Metabase |
+|:------------:|:-----------:|:--------:|
+| ![Airflow](docs/images/airflow-dags.png) | ![dbt](docs/images/dbt-lineage.png) | ![Metabase](docs/images/metabase-dashboard.png) |
+| *3 orchestrated DAGs* | *staging → marts flow* | *User segment dashboards* |
+
+> **Run locally**: `docker-compose up -d` then:
+> - Dashboard: http://localhost:5173
+> - Airflow: http://localhost:8080 (admin/admin)
+> - ML API: http://localhost:8000
+> - Metabase: http://localhost:3000
 
 ### ML Engine API
 
