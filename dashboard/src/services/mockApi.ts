@@ -214,4 +214,29 @@ export const mockApi = {
             q.query.toLowerCase().includes(query.toLowerCase())
         );
     },
+
+    async getRawLargeDataset(): Promise<{ timestamp: number; value: number; type: 'search' | 'booking' | 'error' }[]> {
+        // SCENARIO: Simulating a heavy payload that causes Main Thread freeze if not handled
+        await sleep(600); // Slightly longer delay for "large" data
+
+        const count = 15000; // 15k points to match the "10,000+" claim
+        const data = new Array(count);
+        const now = Date.now();
+        const twoWeeks = 14 * 24 * 60 * 60 * 1000;
+
+        for (let i = 0; i < count; i++) {
+            // Generate clustered data to simulate real patterns (peaks during day vs night)
+            const timeOffset = Math.floor((i / count) * twoWeeks);
+            // Add some randomness to value
+            const baseValue = 50 + Math.sin(i / 100) * 30 + Math.random() * 20;
+
+            data[i] = {
+                timestamp: now - twoWeeks + timeOffset,
+                value: Math.max(0, baseValue),
+                type: Math.random() > 0.95 ? 'error' : (Math.random() > 0.8 ? 'booking' : 'search')
+            };
+        }
+
+        return data;
+    }
 };
