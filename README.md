@@ -86,6 +86,20 @@ docker-compose exec spark spark-submit /app/session_analysis.py --data-dir /data
 docker-compose exec spark spark-submit /app/user_segmentation.py
 ```
 
+## Architecture Decisions
+
+Key design choices and the reasoning behind them:
+
+- **FastAPI over Flask/Django for ML serving** — FastAPI's async support handles concurrent prediction requests without blocking, and its automatic OpenAPI documentation means the ML API is self-documenting. Pydantic validation catches malformed requests before they hit the model.
+
+- **dbt for data transformations** — Version-controlled SQL transformations with built-in testing (schema tests, data tests) and automatic documentation. Easier to audit and debug than raw SQL scripts or pandas pipelines for the transformation layer.
+
+- **Redis for prediction caching** — Sub-millisecond reads for repeated predictions on the same input. TTL-based expiration keeps cache fresh without manual invalidation. Simple key-value model fits the input-hash → prediction-result pattern.
+
+- **Event-driven architecture with generators** — Decouples data generation from processing. Multiple consumers can independently process the same event stream. Supports replay for debugging and reprocessing.
+
+- **Monorepo with Docker Compose** — Single `docker-compose up` starts all 7 services. Shared networking simplifies service discovery. Easier to develop and test locally than separate repos with inter-service dependencies.
+
 ## Quick Start
 
 ```bash
