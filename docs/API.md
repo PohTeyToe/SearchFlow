@@ -334,9 +334,16 @@ Error body format:
 
 ```json
 {
-  "detail": "Description of the error"
+  "error": {
+    "code": 500,
+    "message": "An unexpected error occurred. Use the request_id to trace logs.",
+    "path": "/churn/user_42",
+    "request_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  }
 }
 ```
+
+The `request_id` is unique per error and can be used to search server logs for debugging.
 
 ---
 

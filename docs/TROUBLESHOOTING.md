@@ -192,6 +192,69 @@ npm run dev -- --port 3001
 
 ---
 
+## ML API Issues
+
+### Model not loading
+
+Check the ML engine logs for loading errors:
+
+```bash
+docker-compose logs ml-engine | grep "not loaded"
+```
+
+If a model file is missing, the API falls back to mock responses. Verify model artifacts exist:
+
+```bash
+docker-compose exec ml-engine ls -la /app/models/recommendation/
+docker-compose exec ml-engine ls -la /app/models/sentiment/
+docker-compose exec ml-engine ls -la /app/models/churn/
+```
+
+### Getting 500 errors
+
+All error responses include a `request_id` field. Use it to search logs:
+
+```bash
+docker-compose logs ml-engine | grep "request_id=<YOUR_REQUEST_ID>"
+```
+
+### Testing endpoints manually
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Recommendations
+curl -X POST http://localhost:8000/recommend/user_42 \
+  -H "Content-Type: application/json" \
+  -d '{"top_n": 5}'
+
+# Sentiment analysis
+curl -X POST http://localhost:8000/sentiment \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Amazing hotel experience!"}'
+
+# Churn prediction
+curl -X POST http://localhost:8000/churn/user_42
+
+# Model metrics
+curl http://localhost:8000/metrics
+```
+
+### Redis cache issues
+
+If cached predictions are stale or you need fresh results:
+
+```bash
+# Flush all cached predictions
+docker-compose exec redis redis-cli FLUSHDB
+
+# Check cache TTL for a key
+docker-compose exec redis redis-cli TTL "reco:user_42:10"
+```
+
+---
+
 ## Quick Debug Commands
 
 ```bash
