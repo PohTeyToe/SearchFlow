@@ -170,12 +170,21 @@ SearchFlow/
 - [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 
-## Future Work
+## Known Issues
 
-- [ ] Kubernetes deployment manifests
-- [ ] Real-time streaming with Kafka
-- [ ] Terraform infrastructure-as-code
-- [ ] OpenLineage data lineage tracking
+- Redis cache invalidation is TTL-based only — no event-driven invalidation when models are retrained
+- PySpark jobs run in local mode; cluster deployment would need Spark standalone or YARN configuration
+- ML model serving doesn't support batch predictions (single-request only via REST)
+- Dashboard auth is placeholder — no actual user authentication implemented
+- Event generator timestamps use system clock, which can drift in containerized environments
+
+## Roadmap
+
+- [ ] Kafka integration to replace Redis pub/sub for event streaming
+- [ ] Batch prediction endpoint for bulk inference requests
+- [ ] Grafana + Prometheus monitoring for ML model performance metrics
+- [ ] Airflow DAG integration for PySpark jobs (currently manual execution)
+- [ ] Model A/B testing framework for comparing prediction quality across versions
 
 ---
 
