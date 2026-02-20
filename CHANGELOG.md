@@ -2,6 +2,23 @@
 
 All notable changes to SearchFlow are documented in this file.
 
+## [Unreleased] - 2026-03
+
+### Added
+- Architecture decisions documentation in README
+- ML API troubleshooting guide with common issues and curl examples
+- Edge case test coverage for ML model inference (7 new test cases)
+- Known issues and roadmap section in README
+- Structured error responses with request_id for log tracing
+
+### Changed
+- Tightened type annotations in event models using TypedDict
+- Upgraded minimum versions for fastapi, uvicorn, and pydantic
+- Improved ML API error handling with specific exception types
+
+### Fixed
+- Standardized error response format across all ML API endpoints
+
 ## [0.6.0] - 2026-01-06
 
 ### Added

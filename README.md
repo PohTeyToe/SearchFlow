@@ -14,7 +14,15 @@ cd SearchFlow && docker-compose up -d
 # Dashboard: http://localhost:5173 | Airflow: http://localhost:8080 | ML API: http://localhost:8000
 ```
 
-![SearchFlow Dashboard](docs/images/dashboard-dark.png)
+## Screenshots
+
+| Dashboard (Dark) | Search Analytics |
+|-------|-----------|
+| ![Dashboard dark mode showing funnel metrics and charts](docs/images/dashboard-dark.png) | ![Search analytics with conversion tracking](docs/images/search-analytics.png) |
+
+| Airflow DAGs | Metabase Dashboard |
+|-------|-----------|
+| ![Airflow DAG orchestration view](docs/images/airflow-dags.png) | ![Metabase analytics dashboard](docs/images/metabase-dashboard.png) |
 
 ---
 
@@ -169,6 +177,24 @@ SearchFlow/
 - [ML Engine](docs/ML_ENGINE.md)
 - [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
+
+## Deployment
+
+### Dashboard (Vercel)
+The React dashboard can be deployed to Vercel directly from the `dashboard/` directory:
+1. Connect the repository on [Vercel](https://vercel.com)
+2. Set the root directory to `dashboard`
+3. Framework preset: Vite
+4. Deploy
+
+### ML API (Render)
+The FastAPI ML engine can be deployed to Render:
+1. Connect the repository on [Render](https://render.com)
+2. Select "Docker" runtime
+3. Set Dockerfile path to `ml_engine/Dockerfile`
+4. Configure environment variables (see `.env.example`)
+
+**Live Demo:** [Dashboard](https://dashboard-nine-lilac-71.vercel.app) · [ML API](https://searchflow-ml-api.onrender.com/docs)
 
 ## Known Issues
 

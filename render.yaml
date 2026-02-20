@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: searchflow-ml-api
+    runtime: docker
+    dockerfilePath: ml_engine/Dockerfile
+    dockerContext: ml_engine
+    envVars:
+      - key: REDIS_HOST
+        value: ""
+      - key: REDIS_PORT
+        value: "6379"
+      - key: CACHE_TTL
+        value: "300"
+      - key: MODEL_PATH
+        value: "/app/models"
+    healthCheckPath: /health
+    plan: free

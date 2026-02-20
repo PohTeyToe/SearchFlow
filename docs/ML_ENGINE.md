@@ -1,6 +1,6 @@
 # ML Engine Deep Dive
 
-Comprehensive documentation for SearchFlow's AI-powered recommendation, sentiment analysis, and churn prediction system.
+Detailed documentation for SearchFlow's AI-powered recommendation, sentiment analysis, and churn prediction system.
 
 ---
 
