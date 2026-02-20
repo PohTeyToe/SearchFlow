@@ -1,6 +1,8 @@
 # SearchFlow
 
-Travel search analytics platform. Tracks the search-to-booking funnel, predicts churn, and generates personalized recommendations.
+End-to-end travel search analytics pipeline that tracks the search-to-booking funnel, predicts churn, and generates recommendations. Built to explore how modern data teams build analytics pipelines -- from event generation through ML-powered predictions, simulating a travel booking site's search-to-conversion funnel.
+
+**Live Demo:** [Dashboard](https://dashboard-nine-lilac-71.vercel.app) | [ML API (Swagger)](https://searchflow-ml-api.onrender.com/docs)
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)
@@ -194,7 +196,7 @@ The FastAPI ML engine can be deployed to Render:
 3. Set Dockerfile path to `ml_engine/Dockerfile`
 4. Configure environment variables (see `.env.example`)
 
-**Live Demo:** [Dashboard](https://dashboard-nine-lilac-71.vercel.app) · [ML API](https://searchflow-ml-api.onrender.com/docs)
+See live links at the top of this README.
 
 ## Known Issues
 
