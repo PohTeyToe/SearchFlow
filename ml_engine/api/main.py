@@ -5,6 +5,7 @@ Provides real-time predictions for recommendations, sentiment, and churn.
 Supports Redis caching for low-latency responses.
 """
 
+import hashlib
 import os
 import sys
 import json
@@ -19,6 +20,15 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import redis
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+
+try:
+    from prometheus_fastapi_instrumentator import Instrumentator
+    _HAS_PROMETHEUS = True
+except ImportError:
+    _HAS_PROMETHEUS = False
 
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -42,6 +52,20 @@ MODEL_PATH = os.getenv("MODEL_PATH", "./models")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 CACHE_TTL = int(os.getenv("CACHE_TTL", "3600"))  # 1 hour
+ML_API_KEY = os.getenv("ML_API_KEY", "")
+
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+]
+
+# Include Vercel deployment URL if configured
+_vercel_url = os.getenv("DASHBOARD_URL", "")
+if _vercel_url:
+    ALLOWED_ORIGINS.append(_vercel_url.rstrip("/"))
+
+# Paths that bypass API key authentication
+PUBLIC_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
 
 # ============================================
 # Global State
@@ -135,14 +159,62 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS
+# Rate limiting -- 100 requests/minute per IP on prediction endpoints
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Prometheus metrics -- auto-instruments request count, latency, error rate
+if _HAS_PROMETHEUS:
+    Instrumentator(
+        should_group_status_codes=True,
+        excluded_handlers=["/health", "/docs", "/openapi.json", "/redoc"],
+    ).instrument(app).expose(app, endpoint="/metrics/prometheus", include_in_schema=False)
+
+# CORS -- restricted to known dashboard origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "X-API-Key", "Authorization"],
 )
+
+
+# ============================================
+# API Key Authentication Middleware
+# ============================================
+
+@app.middleware("http")
+async def api_key_middleware(request: Request, call_next):
+    """Require a valid API key for non-public endpoints.
+
+    The expected key is read from the ML_API_KEY env var.  When the var
+    is empty (local dev), authentication is disabled so that the API
+    remains usable without extra setup.
+    """
+    if not ML_API_KEY:
+        # Auth disabled -- no key configured
+        return await call_next(request)
+
+    if request.url.path in PUBLIC_PATHS:
+        return await call_next(request)
+
+    provided_key = request.headers.get("X-API-Key", "")
+    if provided_key != ML_API_KEY:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": {
+                    "code": 401,
+                    "message": "Invalid or missing API key. Set the X-API-Key header.",
+                    "path": str(request.url.path),
+                    "request_id": str(uuid4()),
+                }
+            },
+        )
+
+    return await call_next(request)
 
 
 # ============================================
@@ -247,9 +319,11 @@ async def health_check():
 
 
 @app.post("/recommend/{user_id}", response_model=RecommendationResponse)
+@limiter.limit("100/minute")
 async def get_recommendations(
+    request: Request,
     user_id: str,
-    request: RecommendationRequest = RecommendationRequest()
+    body: RecommendationRequest = RecommendationRequest()
 ):
     """
     Get personalized recommendations for a user.
@@ -258,17 +332,17 @@ async def get_recommendations(
     Results are cached in Redis for 1 hour.
     """
     # Check cache
-    cache_key = f"reco:{user_id}:{request.top_n}"
+    cache_key = f"reco:{user_id}:{body.top_n}"
     cached = get_cached(cache_key)
     if cached:
         return RecommendationResponse(**cached, cached=True)
-    
+
     # Check model
     if models["recommender"] is None:
         # Return mock data if model not loaded
         mock_recs = [
             RecommendationItem(item_id=f"dest_{i}", destination=d, score=0.9-i*0.05)
-            for i, d in enumerate(["Miami", "Cancun", "Las Vegas", "Toronto", "NYC"][:request.top_n])
+            for i, d in enumerate(["Miami", "Cancun", "Las Vegas", "Toronto", "NYC"][:body.top_n])
         ]
         return RecommendationResponse(
             user_id=user_id,
@@ -276,9 +350,9 @@ async def get_recommendations(
             algorithm="mock",
             cached=False
         )
-    
+
     # Get predictions
-    result = models["recommender"].predict(user_id, top_n=request.top_n)
+    result = models["recommender"].predict(user_id, top_n=body.top_n)
     
     recommendations = [
         RecommendationItem(
@@ -303,23 +377,24 @@ async def get_recommendations(
 
 
 @app.post("/sentiment", response_model=SentimentResponse)
-async def analyze_sentiment(request: SentimentRequest):
+@limiter.limit("100/minute")
+async def analyze_sentiment(request: Request, body: SentimentRequest):
     """
     Classify sentiment of review text.
-    
+
     Uses fine-tuned DistilBERT or TF-IDF fallback.
     """
     if models["sentiment"] is None:
         # Mock response
         return SentimentResponse(
-            text=request.text,
+            text=body.text,
             sentiment=SentimentLabel.positive,
             confidence=0.92,
             probabilities={"positive": 0.92, "negative": 0.04, "neutral": 0.04}
         )
-    
-    result = models["sentiment"].predict(request.text)
-    
+
+    result = models["sentiment"].predict(body.text)
+
     return SentimentResponse(
         text=result.text,
         sentiment=SentimentLabel(result.sentiment),
@@ -329,11 +404,12 @@ async def analyze_sentiment(request: SentimentRequest):
 
 
 @app.post("/sentiment/batch", response_model=BatchSentimentResponse)
-async def analyze_sentiment_batch(request: BatchSentimentRequest):
+@limiter.limit("100/minute")
+async def analyze_sentiment_batch(request: Request, body: BatchSentimentRequest):
     """Batch sentiment analysis for multiple texts."""
     results = []
-    
-    for text in request.texts:
+
+    for text in body.texts:
         if models["sentiment"] is None:
             results.append(SentimentResponse(
                 text=text,
@@ -349,12 +425,13 @@ async def analyze_sentiment_batch(request: BatchSentimentRequest):
                 confidence=result.confidence,
                 probabilities=result.probabilities
             ))
-    
+
     return BatchSentimentResponse(results=results, count=len(results))
 
 
 @app.post("/churn/{user_id}", response_model=ChurnResponse)
-async def predict_churn(user_id: str, request: ChurnRequest = ChurnRequest()):
+@limiter.limit("100/minute")
+async def predict_churn(request: Request, user_id: str, body: ChurnRequest = ChurnRequest()):
     """
     Predict churn probability with SHAP explanations.
     
@@ -364,7 +441,7 @@ async def predict_churn(user_id: str, request: ChurnRequest = ChurnRequest()):
     # Check cache
     cache_key = f"churn:{user_id}"
     cached = get_cached(cache_key)
-    if cached and request.features is None:
+    if cached and body.features is None:
         return ChurnResponse(**cached, cached=True)
     
     if models["churn"] is None:
@@ -381,8 +458,8 @@ async def predict_churn(user_id: str, request: ChurnRequest = ChurnRequest()):
             cached=False
         )
     
-    # Get user features (from request or fetch from warehouse)
-    features = request.features or get_user_features(user_id)
+    # Get user features (from body or fetch from warehouse)
+    features = body.features or get_user_features(user_id)
     
     result = models["churn"].predict(user_id, features)
     
@@ -402,25 +479,43 @@ async def predict_churn(user_id: str, request: ChurnRequest = ChurnRequest()):
     return response
 
 
+def _deterministic_float(seed: int, lo: float, hi: float) -> float:
+    """Return a deterministic float in [lo, hi] derived from *seed*."""
+    return lo + (seed % 10000) / 10000 * (hi - lo)
+
+
+def _deterministic_int(seed: int, lo: int, hi: int) -> int:
+    """Return a deterministic int in [lo, hi] derived from *seed*."""
+    return lo + seed % (hi - lo + 1)
+
+
 def get_user_features(user_id: str) -> dict:
-    # TODO: replace with actual warehouse query
-    # In production, this would query DuckDB
-    import random
+    """Build a deterministic feature vector from a user ID.
+
+    In production this would query the DuckDB warehouse.  For now we
+    derive every value from a hash of the user_id so that:
+      - The same user_id always returns the same features (no randomness).
+      - Different user_ids produce different but plausible feature values.
+    """
+    digest = hashlib.sha256(user_id.encode()).hexdigest()
+    # Use successive 8-hex-char slices as independent seeds
+    seeds = [int(digest[i : i + 8], 16) for i in range(0, 64, 8)]
+
     return {
-        'sessions_7d': random.randint(0, 5),
-        'sessions_30d': random.randint(5, 20),
-        'sessions_90d': random.randint(20, 50),
-        'searches_total': random.randint(10, 100),
-        'clicks_total': random.randint(5, 50),
-        'conversions_total': random.randint(0, 5),
-        'search_to_click_ratio': random.uniform(0.1, 0.5),
-        'click_to_conversion_ratio': random.uniform(0, 0.2),
-        'avg_session_duration_mins': random.uniform(5, 30),
-        'days_since_last_activity': random.randint(1, 60),
-        'lifetime_value': random.uniform(0, 2000),
-        'unique_destinations_searched': random.randint(1, 10),
-        'mobile_session_ratio': random.uniform(0, 1),
-        'weekend_session_ratio': random.uniform(0.2, 0.4),
+        "sessions_7d": _deterministic_int(seeds[0], 0, 5),
+        "sessions_30d": _deterministic_int(seeds[0] >> 4, 5, 20),
+        "sessions_90d": _deterministic_int(seeds[0] >> 8, 20, 50),
+        "searches_total": _deterministic_int(seeds[1], 10, 100),
+        "clicks_total": _deterministic_int(seeds[1] >> 4, 5, 50),
+        "conversions_total": _deterministic_int(seeds[2], 0, 5),
+        "search_to_click_ratio": round(_deterministic_float(seeds[2] >> 4, 0.1, 0.5), 3),
+        "click_to_conversion_ratio": round(_deterministic_float(seeds[3], 0.0, 0.2), 3),
+        "avg_session_duration_mins": round(_deterministic_float(seeds[3] >> 4, 5.0, 30.0), 1),
+        "days_since_last_activity": _deterministic_int(seeds[4], 1, 60),
+        "lifetime_value": round(_deterministic_float(seeds[4] >> 4, 0.0, 2000.0), 2),
+        "unique_destinations_searched": _deterministic_int(seeds[5], 1, 10),
+        "mobile_session_ratio": round(_deterministic_float(seeds[5] >> 4, 0.0, 1.0), 3),
+        "weekend_session_ratio": round(_deterministic_float(seeds[6], 0.2, 0.4), 3),
     }
 
 
