@@ -22,6 +22,12 @@ pydantic>=2.10.0
 duckdb>=0.9.0
 redis>=5.0.0
 
+# Observability
+prometheus-fastapi-instrumentator>=7.0.0
+
+# Rate Limiting
+slowapi>=0.1.9
+
 # Utilities
 python-dotenv>=1.0.0
 tqdm>=4.66.0
