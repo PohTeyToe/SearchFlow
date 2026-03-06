@@ -47,6 +47,7 @@ known-first-party = ["event_generator", "ml_engine", "reverse_etl"]
 
 [tool.pytest.ini_options]
 testpaths = [
+    "airflow/tests",
     "event_generator/tests",
     "ml_engine/tests",
     "reverse_etl/tests",
