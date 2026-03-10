@@ -89,26 +89,26 @@ async def lifespan(app: FastAPI):
     """Load models on startup, cleanup on shutdown."""
     global redis_client
     
-    logger.info("🚀 Starting ML Engine...")
+    logger.info("Starting ML Engine...")
     
     # Connect to Redis
     try:
         redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
         redis_client.ping()
-        logger.info(f"  ✅ Redis connected ({REDIS_HOST}:{REDIS_PORT})")
+        logger.info(f"Redis connected ({REDIS_HOST}:{REDIS_PORT})")
     except Exception as e:
-        logger.warning(f"  ⚠️ Redis not available: {e}")
+        logger.warning(f"Redis not available: {e}")
         redis_client = None
     
     # Load models
     load_models()
     
-    logger.info("✅ ML Engine ready!")
+    logger.info("ML Engine ready")
     
     yield
     
     # Cleanup
-    logger.info("🛑 Shutting down ML Engine...")
+    logger.info("Shutting down ML Engine...")
     if redis_client:
         redis_client.close()
 
@@ -123,9 +123,9 @@ def load_models():
         try:
             from src.models.recommendation import HybridRecommender
             models["recommender"] = HybridRecommender.load(recommender_path)
-            logger.info("  ✅ Recommender model loaded")
+            logger.info("Recommender model loaded")
         except Exception as e:
-            logger.warning(f"  ⚠️ Recommender not loaded: {e}")
+            logger.warning(f"Recommender not loaded: {e}")
     
     # Load sentiment analyzer
     sentiment_path = os.path.join(MODEL_PATH, "sentiment")
@@ -133,9 +133,9 @@ def load_models():
         try:
             from src.models.sentiment import SentimentAnalyzer
             models["sentiment"] = SentimentAnalyzer.load(sentiment_path)
-            logger.info("  ✅ Sentiment model loaded")
+            logger.info("Sentiment model loaded")
         except Exception as e:
-            logger.warning(f"  ⚠️ Sentiment not loaded: {e}")
+            logger.warning(f"Sentiment not loaded: {e}")
     
     # Load churn predictor
     churn_path = os.path.join(MODEL_PATH, "churn")
@@ -143,9 +143,9 @@ def load_models():
         try:
             from src.models.churn import ChurnPredictor
             models["churn"] = ChurnPredictor.load(churn_path)
-            logger.info("  ✅ Churn model loaded")
+            logger.info("Churn model loaded")
         except Exception as e:
-            logger.warning(f"  ⚠️ Churn not loaded: {e}")
+            logger.warning(f"Churn not loaded: {e}")
 
 
 # ============================================

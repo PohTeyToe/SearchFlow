@@ -13,5 +13,9 @@ services:
         value: "300"
       - key: MODEL_PATH
         value: "/app/models"
+      - key: DASHBOARD_URL
+        value: "https://dashboard-nine-lilac-71.vercel.app"
+      - key: ML_API_KEY
+        sync: false
     healthCheckPath: /health
     plan: free

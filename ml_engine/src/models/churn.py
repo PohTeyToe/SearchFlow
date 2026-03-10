@@ -293,8 +293,17 @@ def build_churn_features(df: pd.DataFrame) -> pd.DataFrame:
     now = datetime.utcnow()
     
     features = []
-    
-    # FIXME: this breaks when user has no events
+
+    if df.empty:
+        return pd.DataFrame(columns=[
+            'user_id', 'sessions_7d', 'sessions_30d', 'sessions_90d',
+            'searches_total', 'clicks_total', 'conversions_total',
+            'search_to_click_ratio', 'click_to_conversion_ratio',
+            'avg_session_duration_mins', 'days_since_last_activity',
+            'lifetime_value', 'unique_destinations_searched',
+            'mobile_session_ratio', 'weekend_session_ratio',
+        ])
+
     for user_id, events in df.groupby('user_id'):
         user_features = {'user_id': user_id}
         
