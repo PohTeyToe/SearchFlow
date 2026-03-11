@@ -142,7 +142,7 @@ cd dashboard && npm install && npm run dev
 | End-to-end pipeline | ~68 seconds |
 | dbt models | 9/9 passing |
 | dbt tests | 71 |
-| Python tests | 125 (pytest) |
+| Python tests | 110 (pytest) |
 | Docker services | 10 |
 
 ## Testing
