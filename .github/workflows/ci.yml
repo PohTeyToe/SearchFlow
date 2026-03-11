@@ -74,7 +74,7 @@ jobs:
       - name: Install ML engine dependencies
         run: |
           pip install pytest numpy pandas scikit-learn xgboost shap joblib
-          pip install fastapi httpx uvicorn pydantic redis
+          pip install fastapi httpx uvicorn pydantic redis slowapi
 
       - name: Install event generator dependencies
         run: pip install click redis
