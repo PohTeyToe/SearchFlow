@@ -32,8 +32,9 @@ def mock_duckdb():
 
 @pytest.fixture
 def mock_psycopg2():
-    """Mock psycopg2.connect."""
-    with patch("src.syncs.user_segments_sync.psycopg2") as mock:
+    """Mock psycopg2.connect and execute_values."""
+    with patch("src.syncs.user_segments_sync.psycopg2") as mock, \
+         patch("src.syncs.user_segments_sync.execute_values") as mock_exec:
         conn = MagicMock()
         cursor = MagicMock()
         conn.cursor.return_value = cursor
