@@ -187,7 +187,7 @@ class TestEdgeCases:
 
     def test_sentiment_special_characters(self, client: TestClient) -> None:
         """Unicode and special characters should not crash the endpoint."""
-        resp = client.post("/sentiment", json={"text": "Great hotel! \u2605\u2605\u2605\u2605\u2605 \ud83c\udf1f"})
+        resp = client.post("/sentiment", json={"text": "Great hotel! \u2605\u2605\u2605\u2605\u2605 \U0001f31f"})
         assert resp.status_code == 200
         data = resp.json()
         assert data["sentiment"] in ("positive", "negative", "neutral")
