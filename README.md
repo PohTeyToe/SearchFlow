@@ -7,7 +7,7 @@ End-to-end travel search analytics pipeline that tracks the search-to-booking fu
 ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/dbt%20tests-80%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/dbt%20tests-71%20passing-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ```bash
@@ -141,8 +141,8 @@ cd dashboard && npm install && npm run dev
 |-|-|
 | End-to-end pipeline | ~68 seconds |
 | dbt models | 9/9 passing |
-| dbt tests | 80 |
-| Python tests | 50+ (pytest) |
+| dbt tests | 71 |
+| Python tests | 125 (pytest) |
 | Docker services | 10 |
 
 ## Testing

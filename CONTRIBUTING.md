@@ -15,7 +15,7 @@ Thank you for your interest in contributing to SearchFlow!
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/SearchFlow.git
+git clone https://github.com/PohTeyToe/SearchFlow.git
 cd SearchFlow
 
 # Setup environment
