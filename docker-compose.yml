@@ -13,6 +13,7 @@ x-airflow-common: &airflow-common
     DUCKDB_PATH: /data/searchflow.duckdb
     REDIS_HOST: redis
     POSTGRES_HOST: postgres
+    MLFLOW_TRACKING_URI: http://mlflow:5000
   volumes:
     - ./airflow/dags:/opt/airflow/dags
     - ./airflow/plugins:/opt/airflow/plugins
@@ -44,7 +45,8 @@ services:
       POSTGRES_MULTIPLE_DATABASES: searchflow
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./warehouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./warehouse/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./scripts/init-mlflow-db.sql:/docker-entrypoint-initdb.d/02-mlflow.sql
     ports:
       - "5432:5432"
     healthcheck:
@@ -179,6 +181,7 @@ services:
       REDIS_PORT: 6379
       MODEL_PATH: /app/models
       CACHE_TTL: 3600
+      MLFLOW_TRACKING_URI: http://mlflow:5000
     volumes:
       - ./data:/data
       - ./ml_engine/models:/app/models
@@ -193,6 +196,32 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # ============================================
+  # MLFLOW
+  # ============================================
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.10.1
+    container_name: searchflow-mlflow
+    environment:
+      MLFLOW_BACKEND_STORE_URI: postgresql://airflow:airflow@postgres:5432/mlflow
+      MLFLOW_ARTIFACTS_DESTINATION: /data/mlflow-artifacts
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://airflow:airflow@postgres:5432/mlflow
+      --artifacts-destination /data/mlflow-artifacts
+      --host 0.0.0.0
+      --port 5000
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - searchflow-network
 
   # ============================================
   # SPARK
