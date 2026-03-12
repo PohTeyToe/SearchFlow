@@ -28,6 +28,9 @@ prometheus-fastapi-instrumentator>=7.0.0
 # Rate Limiting
 slowapi>=0.1.9
 
+# Experiment Tracking
+mlflow>=3.10.0
+
 # Utilities
 python-dotenv>=1.0.0
 tqdm>=4.66.0
