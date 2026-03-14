@@ -5,11 +5,15 @@ Loads user interaction data from DuckDB, trains collaborative + content-based
 models, and evaluates precision@10.
 """
 
+import json
 import os
 import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
+
+import mlflow
+import mlflow.sklearn
 
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -113,6 +117,12 @@ def train_recommender(
     model_path: str = "./models/recommendation"
 ):
     """Train and save the recommendation model."""
+    # Configure MLflow
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment("recommendations")
+    mlflow.sklearn.autolog()
+
     print("=" * 50)
     print("Training Hybrid Recommendation Engine")
     print("=" * 50)
@@ -150,68 +160,84 @@ def train_recommender(
     train_df = interactions_df[interactions_df['user_id'].isin(train_users)]
     test_df = interactions_df[interactions_df['user_id'].isin(test_users)]
     
-    # Train model
-    recommender = HybridRecommender(n_factors=50, collab_weight=0.6, content_weight=0.4)
-    recommender.fit(train_df, items_df, feature_cols)
-    
-    # Evaluate
-    print("\n[4/4] Evaluating model...")
-    
-    precisions = []
-    recalls = []
-    
-    for user_id in list(test_users)[:100]:  # Sample for speed
-        # Get actual items user interacted with (rating >= 3)
-        actual = test_df[
-            (test_df['user_id'] == user_id) & 
-            (test_df['rating'] >= 3)
-        ]['item_id'].tolist()
-        
-        if not actual:
-            continue
-        
-        # Get predictions
-        result = recommender.predict(user_id, top_n=10)
-        predicted = [r['item_id'] for r in result.recommendations]
-        
-        # Calculate metrics
-        hits = len(set(predicted) & set(actual))
-        precisions.append(hits / 10)
-        recalls.append(hits / len(actual) if actual else 0)
-    
-    avg_precision = np.mean(precisions) if precisions else 0
-    avg_recall = np.mean(recalls) if recalls else 0
-    
-    precision_10 = avg_precision
+    # Train model with MLflow tracking
+    with mlflow.start_run():
+        recommender = HybridRecommender(n_factors=50, collab_weight=0.6, content_weight=0.4)
+        recommender.fit(train_df, items_df, feature_cols)
 
-    print(f"\n  Precision@10: {precision_10:.2%}")
-    print(f"  Recall@10: {avg_recall:.2%}")
+        # Evaluate
+        print("\n[4/4] Evaluating model...")
 
-    # Save model and training results
-    print(f"\n  Saving model to {model_path}...")
-    recommender.save(model_path)
+        precisions = []
+        recalls = []
 
-    # Save evaluation results
-    import json
-    results_dir = os.path.join(os.path.dirname(model_path), "..", "training_results")
-    os.makedirs(results_dir, exist_ok=True)
-    results = {
-        "model": "hybrid_cf_cb",
-        "n_users_train": len(train_users),
-        "n_users_test": len(test_users),
-        "n_interactions": len(interactions_df),
-        "n_items": interactions_df["item_id"].nunique(),
-        "precision_at_10": round(float(precision_10), 4),
-        "recall_at_10": round(float(avg_recall), 4),
-        "n_factors": 50,
-        "collab_weight": 0.6,
-        "content_weight": 0.4,
-    }
-    with open(os.path.join(results_dir, "recommender_results.json"), "w") as f:
-        json.dump(results, f, indent=2)
+        for user_id in list(test_users)[:100]:  # Sample for speed
+            actual = test_df[
+                (test_df['user_id'] == user_id) &
+                (test_df['rating'] >= 3)
+            ]['item_id'].tolist()
 
-    print(f"\n  Recommendation model trained successfully!")
-    print(f"   Precision@10: {precision_10:.2%}")
+            if not actual:
+                continue
+
+            result = recommender.predict(user_id, top_n=10)
+            predicted = [r['item_id'] for r in result.recommendations]
+
+            hits = len(set(predicted) & set(actual))
+            precisions.append(hits / 10)
+            recalls.append(hits / len(actual) if actual else 0)
+
+        avg_precision = np.mean(precisions) if precisions else 0
+        avg_recall = np.mean(recalls) if recalls else 0
+        precision_10 = avg_precision
+
+        # Log metrics and params
+        mlflow.log_metrics({
+            "precision_at_10": float(precision_10),
+            "recall_at_10": float(avg_recall),
+        })
+        mlflow.log_params({
+            "n_factors": 50,
+            "collab_weight": 0.6,
+            "content_weight": 0.4,
+            "n_users_train": len(train_users),
+            "n_users_test": len(test_users),
+            "n_interactions": len(interactions_df),
+            "n_items": int(interactions_df["item_id"].nunique()),
+        })
+
+        # Log model artifact
+        try:
+            mlflow.sklearn.log_model(recommender, "model")
+        except Exception:
+            pass
+
+        print(f"\n  Precision@10: {precision_10:.2%}")
+        print(f"  Recall@10: {avg_recall:.2%}")
+
+        # Save model and training results
+        print(f"\n  Saving model to {model_path}...")
+        recommender.save(model_path)
+
+        results_dir = os.path.join(os.path.dirname(model_path), "..", "training_results")
+        os.makedirs(results_dir, exist_ok=True)
+        results = {
+            "model": "hybrid_cf_cb",
+            "n_users_train": len(train_users),
+            "n_users_test": len(test_users),
+            "n_interactions": len(interactions_df),
+            "n_items": int(interactions_df["item_id"].nunique()),
+            "precision_at_10": round(float(precision_10), 4),
+            "recall_at_10": round(float(avg_recall), 4),
+            "n_factors": 50,
+            "collab_weight": 0.6,
+            "content_weight": 0.4,
+        }
+        with open(os.path.join(results_dir, "recommender_results.json"), "w") as f:
+            json.dump(results, f, indent=2)
+
+        print(f"\n  Recommendation model trained successfully!")
+        print(f"   Precision@10: {precision_10:.2%}")
 
     return recommender, precision_10
 
