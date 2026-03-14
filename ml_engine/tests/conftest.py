@@ -19,6 +19,6 @@ def mlflow_tmp(tmp_path):
     """Set MLflow tracking URI to a temp directory for isolated test runs."""
     import mlflow
 
-    tracking_uri = str(tmp_path / "mlruns")
+    tracking_uri = (tmp_path / "mlruns").as_uri()
     mlflow.set_tracking_uri(tracking_uri)
     yield tracking_uri
