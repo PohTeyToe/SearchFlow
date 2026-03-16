@@ -75,6 +75,7 @@ jobs:
         run: |
           pip install pytest numpy pandas scikit-learn xgboost shap joblib
           pip install fastapi httpx uvicorn pydantic redis slowapi
+          pip install mlflow>=3.10.0
 
       - name: Install event generator dependencies
         run: pip install click redis
@@ -93,6 +94,29 @@ jobs:
       - name: Run reverse ETL tests
         working-directory: ./reverse_etl
         run: python -m pytest tests/ -v --tb=short
+
+  mlflow-test:
+    name: MLflow Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pytest numpy pandas scikit-learn xgboost shap joblib
+          pip install mlflow>=3.10.0
+          pip install fastapi httpx uvicorn pydantic redis slowapi prometheus-fastapi-instrumentator
+
+      - name: Run MLflow tests
+        working-directory: ./ml_engine
+        run: python -m pytest tests/ -v --tb=short -k "mlflow"
 
   dashboard-test:
     name: Dashboard Tests
