@@ -141,3 +141,40 @@ class TestReverseEtlDag:
 
     def test_no_catchup(self):
         assert self.dag.catchup is False
+
+
+# ---------------------------------------------------------------------------
+# Training DAG (MLflow)
+# ---------------------------------------------------------------------------
+
+
+class TestTrainingDag:
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.dag = _load_dag("training_dag", "searchflow_training")
+
+    def test_import_succeeds(self):
+        assert self.dag is not None
+
+    def test_schedule_weekly(self):
+        assert self.dag.schedule_interval == "0 0 * * 0"
+
+    def test_has_three_training_tasks(self):
+        task_ids = [t.task_id for t in self.dag.topological_sort()]
+        assert "train_churn" in task_ids
+        assert "train_sentiment" in task_ids
+        assert "train_recommender" in task_ids
+        assert task_ids.index("train_churn") < task_ids.index("train_sentiment")
+        assert task_ids.index("train_sentiment") < task_ids.index("train_recommender")
+
+    def test_task_commands_reference_training_scripts(self):
+        for task_id, script_module in [
+            ("train_churn", "src.training.train_churn"),
+            ("train_sentiment", "src.training.train_sentiment"),
+            ("train_recommender", "src.training.train_recommender"),
+        ]:
+            task = self.dag.get_task(task_id)
+            assert script_module in task.bash_command
+
+    def test_no_catchup(self):
+        assert self.dag.catchup is False
