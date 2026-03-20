@@ -8,12 +8,11 @@ the console.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, Any, TypedDict, Union
+from typing import Any, TypedDict
 from uuid import uuid4
-import json
-
 
 # ============================================
 # Typed dict shapes for serialized events
@@ -30,7 +29,7 @@ class SearchEventDict(TypedDict):
     event_id: str
     event_type: str
     timestamp: str
-    user_id: Optional[str]
+    user_id: str | None
     session_id: str
     query: str
     results_count: int
@@ -38,10 +37,10 @@ class SearchEventDict(TypedDict):
     platform: str
     device_type: str
     geo: GeoDict
-    utm_source: Optional[str]
-    utm_medium: Optional[str]
-    utm_campaign: Optional[str]
-    filters: Dict[str, Any]
+    utm_source: str | None
+    utm_medium: str | None
+    utm_campaign: str | None
+    filters: dict[str, Any]
 
 
 class ClickEventDict(TypedDict):
@@ -49,7 +48,7 @@ class ClickEventDict(TypedDict):
     event_id: str
     event_type: str
     timestamp: str
-    user_id: Optional[str]
+    user_id: str | None
     session_id: str
     search_event_id: str
     result_position: int
@@ -65,7 +64,7 @@ class ConversionEventDict(TypedDict):
     event_id: str
     event_type: str
     timestamp: str
-    user_id: Optional[str]
+    user_id: str | None
     session_id: str
     click_event_id: str
     booking_value: float
@@ -76,30 +75,30 @@ class ConversionEventDict(TypedDict):
 
 
 # Union of all serialized event shapes
-EventDict = Union[SearchEventDict, ClickEventDict, ConversionEventDict]
+EventDict = SearchEventDict | ClickEventDict | ConversionEventDict
 
 
 @dataclass
 class SearchEvent:
     """Represents a user search event."""
-    
+
     query: str
     session_id: str
     event_id: str = field(default_factory=lambda: str(uuid4()))
     event_type: str = "search"
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    user_id: Optional[str] = None
+    user_id: str | None = None
     results_count: int = 0
     page: int = 1
     platform: str = "web"
     device_type: str = "desktop"
     geo_country: str = "CA"
     geo_city: str = "Toronto"
-    utm_source: Optional[str] = None
-    utm_medium: Optional[str] = None
-    utm_campaign: Optional[str] = None
-    filters: Optional[Dict[str, Any]] = None
-    
+    utm_source: str | None = None
+    utm_medium: str | None = None
+    utm_campaign: str | None = None
+    filters: dict[str, Any] | None = None
+
     def to_dict(self) -> SearchEventDict:
         """Convert to dictionary for JSON serialization."""
         return SearchEventDict(
@@ -128,7 +127,7 @@ class SearchEvent:
 @dataclass
 class ClickEvent:
     """Represents a user clicking on a search result."""
-    
+
     search_event_id: str
     session_id: str
     result_id: str
@@ -139,9 +138,9 @@ class ClickEvent:
     event_id: str = field(default_factory=lambda: str(uuid4()))
     event_type: str = "click"
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    user_id: Optional[str] = None
+    user_id: str | None = None
     result_provider: str = "default"
-    
+
     def to_dict(self) -> ClickEventDict:
         """Convert to dictionary for JSON serialization."""
         return ClickEventDict(
@@ -167,7 +166,7 @@ class ClickEvent:
 @dataclass
 class ConversionEvent:
     """Represents a completed booking/purchase."""
-    
+
     click_event_id: str
     session_id: str
     booking_value: float
@@ -176,10 +175,10 @@ class ConversionEvent:
     event_id: str = field(default_factory=lambda: str(uuid4()))
     event_type: str = "conversion"
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    user_id: Optional[str] = None
+    user_id: str | None = None
     currency: str = "CAD"
     provider: str = "default"
-    
+
     def to_dict(self) -> ConversionEventDict:
         """Convert to dictionary for JSON serialization."""
         return ConversionEventDict(

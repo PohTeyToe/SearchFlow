@@ -7,6 +7,9 @@ faker>=18.0.0
 # Data handling
 pydantic>=2.0.0
 
+# Streaming
+confluent-kafka>=2.13.0
+
 # CLI
 click>=8.1.0
 

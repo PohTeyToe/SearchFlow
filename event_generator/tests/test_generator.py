@@ -1,11 +1,9 @@
 """Tests for the event generator: generation logic, schema validation, output modes."""
 
-import sys
 import json
+import sys
 import tempfile
 from pathlib import Path
-from datetime import datetime
-from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -13,14 +11,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.config import Config
 from src.generator import EventGenerator
-from src.models import SearchEvent, ClickEvent, ConversionEvent
+from src.models import ClickEvent, ConversionEvent, SearchEvent
 from src.publishers import (
-    FilePublisher,
     ConsolePublisher,
-    MultiPublisher,
+    FilePublisher,
     create_publisher,
 )
-
 
 # ------------------------------------------------------------------
 # Fixtures

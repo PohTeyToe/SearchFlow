@@ -7,12 +7,13 @@ content distributions.
 """
 
 import random
+from collections.abc import Generator
 from datetime import datetime, timedelta
-from typing import Generator, List, Dict, Any, Optional
+from typing import Any
 from uuid import uuid4
 
-from .models import SearchEvent, ClickEvent, ConversionEvent
 from .config import Config
+from .models import ClickEvent, ConversionEvent, SearchEvent
 
 
 class EventGenerator:
@@ -29,8 +30,8 @@ class EventGenerator:
 
     def __init__(self, config: Config) -> None:
         self.config: Config = config
-        self.user_pool: List[str] = [f"user_{i}" for i in range(config.user_pool_size)]
-        
+        self.user_pool: list[str] = [f"user_{i}" for i in range(config.user_pool_size)]
+
         # Query templates
         self.query_templates = [
             "cheap flights to {dest}",
@@ -46,29 +47,29 @@ class EventGenerator:
             "{dest} airbnb",
             "weekend getaway {dest}"
         ]
-        
+
         # Product types
         self.product_types = ["flight", "hotel", "car", "package"]
-        
+
         # Cities for geo
         self.cities = {
             "CA": ["Toronto", "Vancouver", "Montreal", "Calgary", "Ottawa"],
             "US": ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"]
         }
-    
-    def generate_session(self) -> Generator[Dict[str, Any], None, None]:
+
+    def generate_session(self) -> Generator[dict[str, Any], None, None]:
         """
         Generate a complete user session with search, clicks, and conversions.
-        
+
         Yields events in chronological order.
         """
         session_id = str(uuid4())
-        
+
         # Determine if user is logged in or anonymous
         user_id = None
         if random.random() > self.config.anonymous_rate:
             user_id = random.choice(self.user_pool)
-        
+
         # Session context (consistent across session)
         platform = random.choice(self.config.platforms)
         device_type = self._get_device_for_platform(platform)
@@ -76,17 +77,17 @@ class EventGenerator:
         geo_city = random.choice(self.cities[geo_country])
         utm_source = random.choice(self.config.utm_sources)
         utm_campaign = self._get_campaign_for_source(utm_source)
-        
+
         # Generate 1-5 searches per session
         num_searches = random.randint(1, self.config.max_searches_per_session)
         # TODO: handle timezone-aware timestamps
         base_time = datetime.utcnow()
-        
+
         for search_idx in range(num_searches):
             # Time between searches (30 sec to 5 min)
             time_offset = timedelta(seconds=random.randint(30, 300) * search_idx)
             search_time = base_time + time_offset
-            
+
             # Generate search event
             search = self._generate_search(
                 session_id=session_id,
@@ -100,15 +101,15 @@ class EventGenerator:
                 utm_campaign=utm_campaign
             )
             yield search.to_dict()
-            
+
             # Maybe generate clicks (CTR)
             if random.random() < self.config.click_through_rate:
                 # 1-3 clicks per search
                 num_clicks = random.randint(1, 3)
-                
+
                 for click_idx in range(num_clicks):
                     click_time = search_time + timedelta(seconds=random.randint(5, 60) * (click_idx + 1))
-                    
+
                     click = self._generate_click(
                         search=search,
                         session_id=session_id,
@@ -116,11 +117,11 @@ class EventGenerator:
                         timestamp=click_time
                     )
                     yield click.to_dict()
-                    
+
                     # Maybe generate conversion (conversion rate of clicks)
                     if random.random() < self.config.conversion_rate:
                         conversion_time = click_time + timedelta(seconds=random.randint(60, 300))
-                        
+
                         conversion = self._generate_conversion(
                             click=click,
                             session_id=session_id,
@@ -128,26 +129,26 @@ class EventGenerator:
                             timestamp=conversion_time
                         )
                         yield conversion.to_dict()
-    
+
     def _generate_search(
         self,
         session_id: str,
-        user_id: Optional[str],
+        user_id: str | None,
         timestamp: datetime,
         platform: str,
         device_type: str,
         geo_country: str,
         geo_city: str,
-        utm_source: Optional[str],
-        utm_campaign: Optional[str]
+        utm_source: str | None,
+        utm_campaign: str | None
     ) -> SearchEvent:
         """Generate a search event."""
         destination = random.choice(self.config.destinations)
         query = random.choice(self.query_templates).format(dest=destination)
-        
+
         # Generate filters based on query type
         filters = self._generate_filters(query)
-        
+
         return SearchEvent(
             query=query,
             session_id=session_id,
@@ -163,27 +164,27 @@ class EventGenerator:
             utm_campaign=utm_campaign,
             filters=filters
         )
-    
+
     def _generate_click(
         self,
         search: SearchEvent,
         session_id: str,
-        user_id: Optional[str],
+        user_id: str | None,
         timestamp: datetime
     ) -> ClickEvent:
         """Generate a click event linked to a search."""
         # Extract destination from query (simplified)
         destination = self._extract_destination(search.query)
-        
+
         # Position follows power law (most clicks on top results)
         position = self._weighted_position()
-        
+
         # Determine product type from query
         product_type = self._infer_product_type(search.query)
-        
+
         # Generate realistic price
         price = self._generate_price(product_type)
-        
+
         return ClickEvent(
             search_event_id=search.event_id,
             session_id=session_id,
@@ -196,22 +197,22 @@ class EventGenerator:
             result_provider=random.choice(self.config.providers),
             result_destination=destination
         )
-    
+
     def _generate_conversion(
         self,
         click: ClickEvent,
         session_id: str,
-        user_id: Optional[str],
+        user_id: str | None,
         timestamp: datetime
     ) -> ConversionEvent:
         """Generate a conversion event linked to a click."""
         # Booking value is usually close to clicked price
         booking_value = click.result_price * random.uniform(0.95, 1.05)
-        
+
         # Commission is typically 5-15% of booking value
         commission_rate = random.uniform(0.05, 0.15)
         commission = booking_value * commission_rate
-        
+
         return ConversionEvent(
             click_event_id=click.event_id,
             session_id=session_id,
@@ -222,18 +223,18 @@ class EventGenerator:
             product_type=click.result_type,
             provider=click.result_provider
         )
-    
+
     def _get_device_for_platform(self, platform):
         if platform == "web":
             return random.choice(["desktop", "mobile", "tablet"])
         elif platform in ["ios", "android"]:
             return "mobile"
         return "desktop"
-    
-    def _get_campaign_for_source(self, utm_source: Optional[str]) -> Optional[str]:
+
+    def _get_campaign_for_source(self, utm_source: str | None) -> str | None:
         if utm_source is None:
             return None
-        
+
         campaigns = {
             "google": ["brand_search", "generic_flights", "retargeting"],
             "facebook": ["summer_deals", "weekend_getaway", "lookalike"],
@@ -243,18 +244,18 @@ class EventGenerator:
             "tiktok": ["viral_deals", "travel_hack"],
             "direct": [None]
         }
-        
+
         return random.choice(campaigns.get(utm_source, [None]))
-    
-    def _generate_filters(self, query: str) -> Dict[str, Any]:
+
+    def _generate_filters(self, query: str) -> dict[str, Any]:
         filters = {}
-        
+
         if "cheap" in query.lower():
             filters["price_max"] = random.randint(300, 500)
-        
+
         if "flight" in query.lower():
             filters["travelers"] = random.randint(1, 4)
-            
+
         # Add dates for most searches
         if random.random() > 0.3:
             start_date = datetime.utcnow() + timedelta(days=random.randint(7, 90))
@@ -263,25 +264,25 @@ class EventGenerator:
                 start_date.strftime("%Y-%m-%d"),
                 end_date.strftime("%Y-%m-%d")
             ]
-        
+
         return filters
-    
+
     def _extract_destination(self, query: str) -> str:
         # Check if any destination is in the query
         for dest in self.config.destinations:
             if dest.lower() in query.lower():
                 return dest
         return random.choice(self.config.destinations)
-    
+
     def _weighted_position(self):
         # Most clicks happen on positions 1-5
         weights = [0.35, 0.25, 0.15, 0.10, 0.08, 0.04, 0.02, 0.01]
         positions = list(range(1, 9))
         return random.choices(positions, weights=weights)[0]
-    
+
     def _infer_product_type(self, query: str) -> str:
         query_lower = query.lower()
-        
+
         if "flight" in query_lower:
             return "flight"
         elif "hotel" in query_lower or "airbnb" in query_lower:
@@ -290,13 +291,13 @@ class EventGenerator:
             return "car"
         elif "package" in query_lower or "vacation" in query_lower:
             return "package"
-        
+
         # Default based on probability
         return random.choices(
             ["flight", "hotel", "car", "package"],
             weights=[0.5, 0.3, 0.1, 0.1]
         )[0]
-    
+
     def _generate_price(self, product_type):
         price_ranges = {
             "flight": (150, 1500),
@@ -304,6 +305,6 @@ class EventGenerator:
             "car": (30, 150),
             "package": (500, 3000)
         }
-        
+
         min_price, max_price = price_ranges.get(product_type, (100, 500))
         return round(random.uniform(min_price, max_price), 2)

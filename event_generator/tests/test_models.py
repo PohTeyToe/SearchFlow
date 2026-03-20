@@ -1,18 +1,14 @@
 """Tests for event data models and funnel simulation."""
 
-import sys
 import json
+import sys
 from pathlib import Path
-from datetime import datetime, timedelta
-
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.models import SearchEvent, ClickEvent, ConversionEvent
 from src.config import Config
 from src.generator import EventGenerator
-
+from src.models import ClickEvent, ConversionEvent, SearchEvent
 
 # ------------------------------------------------------------------
 # SearchEvent tests
