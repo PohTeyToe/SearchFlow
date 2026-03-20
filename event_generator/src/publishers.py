@@ -1,6 +1,7 @@
 """Publishers for outputting generated events."""
 
 import json
+import logging
 import os
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -8,6 +9,9 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 
 import redis
+from confluent_kafka import Producer
+
+logger = logging.getLogger(__name__)
 
 
 class Publisher(ABC):
@@ -103,6 +107,40 @@ class ConsolePublisher(Publisher):
         pass
 
 
+class KafkaPublisher(Publisher):
+    """Publish events to Kafka topics."""
+
+    def __init__(self, bootstrap_servers: str = "kafka:9092"):
+        self.producer = Producer({
+            "bootstrap.servers": bootstrap_servers,
+            "enable.idempotence": True,
+            "compression.type": "lz4",
+            "linger.ms": 100,
+            "batch.size": 16384,
+        })
+
+    def publish(self, event: Dict[str, Any]) -> None:
+        """Publish event to the appropriate Kafka topic."""
+        event_type = event.get("event_type", "unknown")
+        topic = f"searchflow.{event_type}-events"
+        user_id = event.get("user_id")
+        key = user_id.encode("utf-8") if user_id else None
+        value = json.dumps(event).encode("utf-8")
+        self.producer.produce(
+            topic=topic, key=key, value=value, callback=self._delivery_callback
+        )
+        self.producer.poll(0)
+
+    def _delivery_callback(self, err, msg):
+        """Called once per message to indicate delivery result."""
+        if err is not None:
+            logger.error("Delivery failed for %s: %s", msg.topic(), err)
+
+    def close(self) -> None:
+        """Flush pending messages and clean up."""
+        self.producer.flush(timeout=10)
+
+
 class MultiPublisher(Publisher):
     """Publish to multiple destinations."""
     
@@ -124,10 +162,11 @@ def create_publisher(
     output_type: str = "file",
     redis_host: Optional[str] = None,
     redis_port: Optional[int] = None,
-    output_dir: Optional[str] = None
+    output_dir: Optional[str] = None,
+    kafka_bootstrap_servers: Optional[str] = None,
 ) -> Publisher:
     """Factory function to create appropriate publisher."""
-    
+
     if output_type == "redis":
         return RedisPublisher(
             host=redis_host or os.getenv("REDIS_HOST", "localhost"),
@@ -146,6 +185,23 @@ def create_publisher(
                 host=redis_host or os.getenv("REDIS_HOST", "localhost"),
                 port=redis_port or int(os.getenv("REDIS_PORT", "6379"))
             )
+        ])
+    elif output_type == "kafka":
+        return KafkaPublisher(
+            bootstrap_servers=kafka_bootstrap_servers
+            or os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+        )
+    elif output_type == "all":
+        return MultiPublisher([
+            FilePublisher(output_dir=output_dir or os.getenv("OUTPUT_DIR", "/data/raw")),
+            RedisPublisher(
+                host=redis_host or os.getenv("REDIS_HOST", "localhost"),
+                port=redis_port or int(os.getenv("REDIS_PORT", "6379"))
+            ),
+            KafkaPublisher(
+                bootstrap_servers=kafka_bootstrap_servers
+                or os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+            ),
         ])
     else:
         raise ValueError(f"Unknown output type: {output_type}")

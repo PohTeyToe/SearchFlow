@@ -14,6 +14,9 @@ class Config:
     
     # Output directory for file-based output
     output_dir: str = os.getenv("OUTPUT_DIR", "/data/raw")
+
+    # Kafka connection
+    kafka_bootstrap_servers: str = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
     
     # Generation rates
     events_per_second: int = int(os.getenv("EVENTS_PER_SECOND", "10"))

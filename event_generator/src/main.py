@@ -45,7 +45,7 @@ def signal_handler(signum, frame):
 )
 @click.option(
     "--output",
-    type=click.Choice(["file", "redis", "console", "both"]),
+    type=click.Choice(["file", "redis", "console", "both", "kafka", "all"]),
     default="file",
     help="Output destination"
 )
