@@ -1,0 +1,3 @@
+confluent-kafka>=2.13.0
+duckdb>=0.9.0
+python-dotenv>=1.0.0
