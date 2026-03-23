@@ -233,6 +233,23 @@ services:
     networks:
       - searchflow-network
 
+  kafka-consumer:
+    build:
+      context: ./kafka_consumer
+      dockerfile: Dockerfile
+    container_name: searchflow-kafka-consumer
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      DUCKDB_PATH: /data/searchflow.duckdb
+    volumes:
+      - ./data:/data
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - searchflow-network
+
   # ============================================
   # MLFLOW
   # ============================================
