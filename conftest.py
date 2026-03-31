@@ -18,7 +18,7 @@ def _switch_component(path_str: str):
     global _current_component
     root = str(Path(__file__).resolve().parent)
 
-    for component in ("event_generator", "ml_engine", "reverse_etl", "airflow"):
+    for component in ("event_generator", "ml_engine", "reverse_etl", "airflow", "search_assistant"):
         component_dir = str(Path(root) / component)
         if component_dir in path_str:
             if _current_component == component_dir:

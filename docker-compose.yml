@@ -199,6 +199,30 @@ services:
       retries: 3
 
   # ============================================
+  # SEARCH ASSISTANT
+  # ============================================
+
+  search-assistant:
+    build:
+      context: ./search_assistant
+      dockerfile: Dockerfile
+    container_name: searchflow-search-assistant
+    environment:
+      ML_ENGINE_URL: http://ml-engine:8000
+      DUCKDB_PATH: /data/searchflow.duckdb
+      LLM_BACKEND: ${LLM_BACKEND:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./data:/data
+    ports:
+      - "8001:8001"
+    depends_on:
+      ml-engine:
+        condition: service_healthy
+    networks:
+      - searchflow-network
+
+  # ============================================
   # STREAMING SERVICES
   # ============================================
 
