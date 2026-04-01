@@ -116,6 +116,28 @@ jobs:
         working-directory: ./ml_engine
         run: python -m pytest tests/ -v --tb=short -k "mlflow"
 
+  search-assistant-test:
+    name: Search Assistant Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pytest langchain langchain-core langchain-anthropic langgraph
+          pip install fastapi httpx uvicorn duckdb pydantic
+
+      - name: Run search assistant tests
+        working-directory: ./search_assistant
+        run: python -m pytest tests/ -v --tb=short
+
   dashboard-test:
     name: Dashboard Tests
     runs-on: ubuntu-latest
