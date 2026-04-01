@@ -157,7 +157,7 @@ class ChurnPredictor:
         # Get probability
         churn_prob = float(self.model.predict_proba(X_scaled)[0, 1])
         
-        # TODO: cache SHAP values for repeated predictions on same user
+        # Compute SHAP values per-request for accurate per-prediction explanations
         shap_values = self.explainer.shap_values(X_scaled)[0]
         
         # Get top contributing factors

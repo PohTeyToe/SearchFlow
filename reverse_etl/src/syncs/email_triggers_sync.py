@@ -6,10 +6,10 @@ convert, and queues personalized re-engagement emails in the
 user within 24 hours are suppressed.
 """
 
-from datetime import datetime
-from typing import Dict, Any, List
 import json
 import logging
+from datetime import datetime
+from typing import Any
 
 import duckdb
 import psycopg2
@@ -20,32 +20,32 @@ logger = logging.getLogger(__name__)
 class EmailTriggersSync:
     """
     Identifies users with abandoned searches and queues re-engagement emails.
-    
+
     This enables:
     - Automated abandoned cart/search recovery campaigns
     - Personalized re-engagement with search context
     - Timely follow-ups (within 24-48h of search)
     """
-    
-    def __init__(self, warehouse_path: str, postgres_config: Dict[str, Any]):
+
+    def __init__(self, warehouse_path: str, postgres_config: dict[str, Any]):
         self.warehouse_path = warehouse_path
         self.postgres_config = postgres_config
-    
-    def run(self) -> Dict[str, Any]:
+
+    def run(self) -> dict[str, Any]:
         """Execute the sync and return metrics."""
         start_time = datetime.utcnow()
         logger.info("Starting email triggers sync...")
-        
+
         try:
             # Find users with abandoned searches
             abandoned_users = self._find_abandoned_searches()
             logger.info(f"Found {len(abandoned_users)} users with abandoned searches")
-            
+
             # Queue emails (avoid duplicates)
             queued = self._queue_emails(abandoned_users)
-            
+
             elapsed = (datetime.utcnow() - start_time).total_seconds()
-            
+
             return {
                 "sync_type": "email_triggers",
                 "status": "success",
@@ -53,7 +53,7 @@ class EmailTriggersSync:
                 "emails_queued": queued,
                 "duration_seconds": elapsed
             }
-            
+
         except Exception as e:
             logger.error(f"Sync failed: {e}")
             return {
@@ -61,14 +61,14 @@ class EmailTriggersSync:
                 "status": "failed",
                 "error": str(e)
             }
-    
-    def _find_abandoned_searches(self) -> List[Dict[str, Any]]:
+
+    def _find_abandoned_searches(self) -> list[dict[str, Any]]:
         """Find users who searched but didn't convert in last 48h."""
         conn = duckdb.connect(self.warehouse_path, read_only=True)
-        
+
         result = conn.execute("""
             WITH recent_searches AS (
-                SELECT 
+                SELECT
                     user_id,
                     search_query,
                     event_timestamp,
@@ -84,7 +84,7 @@ class EmailTriggersSync:
                   AND user_id IS NOT NULL
             ),
             abandoned AS (
-                SELECT 
+                SELECT
                     rs.user_id,
                     rs.search_query AS last_search_query,
                     MAX(rs.event_timestamp) AS last_search_time,
@@ -94,7 +94,7 @@ class EmailTriggersSync:
                 WHERE rc.user_id IS NULL  -- No conversion
                 GROUP BY rs.user_id, rs.search_query
             )
-            SELECT 
+            SELECT
                 user_id,
                 last_search_query,
                 last_search_time,
@@ -104,9 +104,9 @@ class EmailTriggersSync:
             ORDER BY last_search_time DESC
             LIMIT 1000
         """).fetchall()
-        
+
         conn.close()
-        
+
         return [
             {
                 "user_id": row[0],
@@ -116,27 +116,27 @@ class EmailTriggersSync:
             }
             for row in result
         ]
-    
-    def _queue_emails(self, users: List[Dict[str, Any]]) -> int:
+
+    def _queue_emails(self, users: list[dict[str, Any]]) -> int:
         """Queue abandoned search emails, avoiding duplicates."""
         if not users:
             return 0
-        
+
         conn = psycopg2.connect(**self.postgres_config)
         cursor = conn.cursor()
-        
+
         # TODO: batch this for better performance
         queued = 0
         for user in users:
             # Check if email already queued for this user recently
             cursor.execute("""
-                SELECT 1 FROM email_queue 
-                WHERE user_id = %s 
+                SELECT 1 FROM email_queue
+                WHERE user_id = %s
                   AND email_template = 'abandoned_search'
                   AND created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
                   AND status IN ('pending', 'sent')
             """, (user["user_id"],))
-            
+
             if cursor.fetchone() is None:
                 # Queue new email
                 payload = {
@@ -144,7 +144,7 @@ class EmailTriggersSync:
                     "search_count": user["search_count"],
                     "personalized_link": f"/search?q={user['last_search_query']}"
                 }
-                
+
                 cursor.execute("""
                     INSERT INTO email_queue (user_id, email_template, payload, priority)
                     VALUES (%s, %s, %s, %s)
@@ -155,9 +155,9 @@ class EmailTriggersSync:
                     3  # Higher priority for abandoned search emails
                 ))
                 queued += 1
-        
+
         conn.commit()
         cursor.close()
         conn.close()
-        
+
         return queued

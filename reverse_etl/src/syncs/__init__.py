@@ -3,12 +3,12 @@
 Each sync module handles syncing a specific mart to an operational system.
 """
 
-from .user_segments_sync import UserSegmentsSync
 from .email_triggers_sync import EmailTriggersSync
 from .recommendations_sync import RecommendationsSync
+from .user_segments_sync import UserSegmentsSync
 
 __all__ = [
-    "UserSegmentsSync",
-    "EmailTriggersSync", 
-    "RecommendationsSync"
+    "EmailTriggersSync",
+    "RecommendationsSync",
+    "UserSegmentsSync"
 ]

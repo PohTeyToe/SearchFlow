@@ -7,10 +7,9 @@ scores, enabling O(1) lookup during live search requests.  Keys have
 a 7-day TTL and are refreshed on each sync run.
 """
 
-from datetime import datetime
-from typing import Dict, Any, List
-import json
 import logging
+from datetime import datetime
+from typing import Any
 
 import duckdb
 import redis
@@ -21,13 +20,13 @@ logger = logging.getLogger(__name__)
 class RecommendationsSync:
     """
     Syncs recommendation scores to Redis for real-time search personalization.
-    
+
     This enables:
     - Personalized search result ranking
     - "Recommended for you" sections
     - Real-time lookup during search (O(1) with Redis)
     """
-    
+
     def __init__(self, warehouse_path: str, redis_host: str, redis_port: int):
         self.warehouse_path = warehouse_path
         self.redis_client = redis.Redis(
@@ -35,22 +34,22 @@ class RecommendationsSync:
             port=redis_port,
             decode_responses=True
         )
-    
-    def run(self) -> Dict[str, Any]:
+
+    def run(self) -> dict[str, Any]:
         """Execute the sync and return metrics."""
         start_time = datetime.utcnow()
         logger.info("Starting recommendations sync...")
-        
+
         try:
             # Extract recommendations from warehouse
             recommendations = self._extract_recommendations()
             logger.info(f"Extracted {len(recommendations)} recommendation records")
-            
+
             # Load to Redis
             users_updated = self._load_to_redis(recommendations)
-            
+
             elapsed = (datetime.utcnow() - start_time).total_seconds()
-            
+
             return {
                 "sync_type": "recommendations",
                 "status": "success",
@@ -58,7 +57,7 @@ class RecommendationsSync:
                 "users_updated": users_updated,
                 "duration_seconds": elapsed
             }
-            
+
         except Exception as e:
             logger.error(f"Sync failed: {e}")
             return {
@@ -66,12 +65,12 @@ class RecommendationsSync:
                 "status": "failed",
                 "error": str(e)
             }
-    
-    def _extract_recommendations(self) -> List[Dict[str, Any]]:
+
+    def _extract_recommendations(self) -> list[dict[str, Any]]:
         conn = duckdb.connect(self.warehouse_path, read_only=True)
-        
+
         result = conn.execute("""
-            SELECT 
+            SELECT
                 user_id,
                 recommended_destination,
                 recommendation_score,
@@ -81,9 +80,9 @@ class RecommendationsSync:
               AND rank <= 10
             ORDER BY user_id, rank
         """).fetchall()
-        
+
         conn.close()
-        
+
         return [
             {
                 "user_id": row[0],
@@ -93,51 +92,51 @@ class RecommendationsSync:
             }
             for row in result
         ]
-    
-    def _load_to_redis(self, recommendations: List[Dict[str, Any]]) -> int:
+
+    def _load_to_redis(self, recommendations: list[dict[str, Any]]) -> int:
         """
         Load recommendations to Redis.
-        
+
         Storage format:
         - Key: searchflow:reco:{user_id}
         - Value: Hash of {destination: score}
-        
+
         This allows O(1) lookup during search.
         """
         if not recommendations:
             return 0
-        
+
         # Group by user
-        users_data: Dict[str, Dict[str, float]] = {}
+        users_data: dict[str, dict[str, float]] = {}
         for rec in recommendations:
             user_id = rec["user_id"]
             if user_id not in users_data:
                 users_data[user_id] = {}
             users_data[user_id][rec["destination"]] = rec["score"]
-        
+
         # TODO: add proper logging here
         pipe = self.redis_client.pipeline()
-        
+
         for user_id, destinations in users_data.items():
             key = f"searchflow:reco:{user_id}"
-            
+
             # Delete old recommendations
             pipe.delete(key)
-            
+
             # Set new recommendations
             if destinations:
                 pipe.hset(key, mapping=destinations)
                 # Set TTL of 7 days (refresh before expiry)
                 pipe.expire(key, 60 * 60 * 24 * 7)
-        
+
         pipe.execute()
-        
+
         return len(users_data)
-    
-    def get_recommendations(self, user_id: str) -> Dict[str, float]:
+
+    def get_recommendations(self, user_id: str) -> dict[str, float]:
         """
         Get recommendations for a user (for search personalization).
-        
+
         This method would be called by the search service.
         """
         key = f"searchflow:reco:{user_id}"

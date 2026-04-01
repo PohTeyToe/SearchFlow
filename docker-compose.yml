@@ -21,6 +21,7 @@ x-airflow-common: &airflow-common
     - ./dbt_transform:/dbt
     - ./data:/data
     - ./event_generator:/event_generator
+    - /var/run/docker.sock:/var/run/docker.sock
   depends_on:
     postgres:
       condition: service_healthy

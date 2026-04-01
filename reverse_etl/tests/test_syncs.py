@@ -1,23 +1,21 @@
 """Tests for reverse-ETL sync modules with mocked destinations."""
 
 import sys
-import json
-from pathlib import Path
 from datetime import datetime
-from unittest.mock import patch, MagicMock, call
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.syncs import user_segments_sync as _useg_mod
+from src.config import Config
 from src.syncs import email_triggers_sync as _etrig_mod
 from src.syncs import recommendations_sync as _reco_mod
-from src.syncs.user_segments_sync import UserSegmentsSync
+from src.syncs import user_segments_sync as _useg_mod
 from src.syncs.email_triggers_sync import EmailTriggersSync
 from src.syncs.recommendations_sync import RecommendationsSync
-from src.config import Config
-
+from src.syncs.user_segments_sync import UserSegmentsSync
 
 # ------------------------------------------------------------------
 # Fixtures
@@ -37,7 +35,7 @@ def mock_duckdb():
 def mock_psycopg2():
     """Mock psycopg2.connect and execute_values."""
     with patch.object(_useg_mod, "psycopg2") as mock, \
-         patch.object(_useg_mod, "execute_values") as mock_exec:
+         patch.object(_useg_mod, "execute_values"):
         conn = MagicMock()
         cursor = MagicMock()
         conn.cursor.return_value = cursor
@@ -64,8 +62,8 @@ def pg_config() -> dict:
 
 class TestUserSegmentsSync:
     def test_run_success(self, mock_duckdb, mock_psycopg2, pg_config) -> None:
-        duckdb_mod, duckdb_conn = mock_duckdb
-        _, pg_conn, cursor = mock_psycopg2
+        _duckdb_mod, duckdb_conn = mock_duckdb
+        _, _pg_conn, _cursor = mock_psycopg2
 
         # DuckDB returns sample segments
         duckdb_conn.execute.return_value.fetchall.return_value = [
@@ -81,7 +79,7 @@ class TestUserSegmentsSync:
         assert result["sync_type"] == "user_segments"
 
     def test_run_handles_empty_data(self, mock_duckdb, mock_psycopg2, pg_config) -> None:
-        duckdb_mod, duckdb_conn = mock_duckdb
+        _duckdb_mod, duckdb_conn = mock_duckdb
         duckdb_conn.execute.return_value.fetchall.return_value = []
 
         sync = UserSegmentsSync("/fake/path.duckdb", pg_config)

@@ -10,8 +10,8 @@ for table in raw_tables:
 
 print("\n=== Staging Views ===")
 staging_tables = [
-    "main_staging.stg_search_events", 
-    "main_staging.stg_click_events", 
+    "main_staging.stg_search_events",
+    "main_staging.stg_click_events",
     "main_staging.stg_conversion_events"
 ]
 for table in staging_tables:
@@ -59,7 +59,7 @@ for table in marketing_tables:
 
 print("\n=== Sample Data from fct_search_funnel ===")
 result = conn.execute("""
-    SELECT funnel_date, total_sessions, total_searches, total_clicks, 
+    SELECT funnel_date, total_sessions, total_searches, total_clicks,
            total_conversions, click_through_rate, conversion_rate
     FROM main_analytics.fct_search_funnel
     ORDER BY funnel_date DESC
