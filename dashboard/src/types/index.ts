@@ -100,6 +100,59 @@ export interface ApiResponse<T> {
     timestamp: string;
 }
 
+// User & Churn Types
+export interface ShapFactor {
+    feature: string;
+    featureLabel: string;
+    value: number;
+    direction: 'increases' | 'decreases';
+}
+
+export interface ChurnPrediction {
+    probability: number;
+    riskLevel: 'low' | 'medium' | 'high';
+    topFactors: ShapFactor[];
+    baseValue: number;
+}
+
+export type UserSegment2 = 'high_value' | 'at_risk' | 'new_user' | 'regular' | 'abandoned_search';
+
+export interface User {
+    userId: string;
+    segment: UserSegment2;
+    lastActive: string;
+    churnPrediction: ChurnPrediction;
+}
+
+export interface UserSearchEvent {
+    query: string;
+    timestamp: string;
+    resultsCount: number;
+    clicked: boolean;
+    destination?: string;
+}
+
+export interface UserRecommendation {
+    destination: string;
+    score: number;
+    reason: string;
+}
+
+export interface UserProfile extends User {
+    shapValues: ShapFactor[];
+    searchHistory: UserSearchEvent[];
+    recommendations: UserRecommendation[];
+}
+
+// Chat Types
+export interface ChatMessage {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: string;
+    toolsUsed?: string[];
+}
+
 // Chart Types
 export interface ChartDataPoint {
     name: string;
