@@ -3,3 +3,5 @@ export { PipelinesPage } from './PipelinesPage';
 export { MetricsPage } from './MetricsPage';
 export { SearchAnalyticsPage } from './SearchAnalyticsPage';
 export { SettingsPage } from './SettingsPage';
+export { UsersPage } from './UsersPage';
+export { UserProfilePage } from './UserProfilePage';

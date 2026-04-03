@@ -3,3 +3,4 @@ export { useDataQualityMetrics, useRecordCounts, usePipelineMetrics } from './us
 export { useSearchFunnel, useTopQueries, useUserSegments, useSearch } from './useSearchAnalytics';
 export { useDebounce, useDebouncedCallback, usePolling, useLocalStorage, useMediaQuery, useClickOutside } from './useCustomHooks';
 export * from './usePerformanceMetrics';
+export { useAssistant } from './useAssistant';

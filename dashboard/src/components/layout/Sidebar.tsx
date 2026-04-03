@@ -8,16 +8,18 @@ import {
     BarChart3,
     Search,
     Settings,
+    Users,
     ChevronLeft,
     ChevronRight,
 } from 'lucide-react';
 
 const navItems = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/pipelines', icon: Workflow, label: 'Pipelines' },
-    { to: '/metrics', icon: BarChart3, label: 'Metrics' },
-    { to: '/search', icon: Search, label: 'Search Analytics' },
-    { to: '/settings', icon: Settings, label: 'Settings' },
+    { to: '/', icon: LayoutDashboard, label: 'Dashboard', id: undefined },
+    { to: '/search', icon: Search, label: 'Search Analytics', id: undefined },
+    { to: '/users', icon: Users, label: 'Users', id: 'nav-users' },
+    { to: '/pipelines', icon: Workflow, label: 'Pipelines', id: undefined },
+    { to: '/metrics', icon: BarChart3, label: 'Metrics', id: undefined },
+    { to: '/settings', icon: Settings, label: 'Settings', id: undefined },
 ];
 
 export const Sidebar: React.FC = () => {
@@ -59,6 +61,7 @@ export const Sidebar: React.FC = () => {
                     <NavLink
                         key={item.to}
                         to={item.to}
+                        id={item.id}
                         className={({ isActive }) =>
                             cn(
                                 'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
