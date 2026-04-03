@@ -7,12 +7,20 @@ import { DAGCard } from '../components/pipeline/DAGCard';
 import { ChartContainer, LineChart, HorizontalFunnel } from '../components/charts';
 import { usePipelineStatus, useDataQualityMetrics, useSearchFunnel } from '../hooks';
 import { SkeletonCard } from '../components/ui';
-import { Activity, Database, Search, TrendingUp } from 'lucide-react';
+import { Database, Search, TrendingUp, AlertTriangle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { mockApi } from '../services';
+import { Link } from 'react-router-dom';
 
 export const DashboardPage: React.FC = () => {
     const { data: dags, isLoading: dagsLoading } = usePipelineStatus();
     const { data: qualityMetrics, isLoading: metricsLoading } = useDataQualityMetrics();
     const { data: funnelData, isLoading: funnelLoading } = useSearchFunnel();
+    const { data: users } = useQuery({
+        queryKey: ['users'],
+        queryFn: () => mockApi.getUsers(),
+    });
+    const atRiskCount = users?.filter(u => u.churnPrediction.riskLevel === 'high').length || 0;
 
     // Calculate stats from DAGs
     const runningDags = dags?.filter((d) => d.lastRun?.state === 'running').length || 0;
@@ -62,12 +70,14 @@ export const DashboardPage: React.FC = () => {
                     subtitle="From funnel drop-offs"
                     icon={<Database className="w-6 h-6" />}
                 />
-                <StatCard
-                    title="Pipeline Health"
-                    value={dags ? `${Math.round((successfulDags / (dags.length || 1)) * 100)}%` : '...'}
-                    trend={{ value: 0, label: 'stable' }}
-                    icon={<Activity className="w-6 h-6" />}
-                />
+                <Link to="/users?sort=churn_desc" className="block">
+                    <StatCard
+                        title="Users at Risk"
+                        value={atRiskCount}
+                        subtitle="High churn probability"
+                        icon={<AlertTriangle className="w-6 h-6" />}
+                    />
+                </Link>
             </div>
 
             {/* Main Grid */}
@@ -88,7 +98,7 @@ export const DashboardPage: React.FC = () => {
                 </div>
 
                 {/* Booking Funnel */}
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2" id="booking-funnel">
                     <ChartContainer
                         title="Booking Funnel"
                         subtitle="Search → View → Book (Last 7 days)"
@@ -102,7 +112,7 @@ export const DashboardPage: React.FC = () => {
             {/* Second Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 {/* DAG Cards */}
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2" id="pipelines-section">
                     <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Pipelines</h3>
                     {dagsLoading ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
