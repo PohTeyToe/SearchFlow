@@ -189,14 +189,31 @@ function seededRandom(seed: number): () => number {
     };
 }
 
-function generateShapValues(probability: number, seed: number): ShapFactor[] {
-    const rng = seededRandom(seed);
+// Segment-specific feature biases: which features matter most for each segment
+const SEGMENT_BIASES: Record<string, number[]> = {
+    high_value:       [0.5, 0.3, 0.8, 2.5, 1.2, 0.6, 1.5, 2.0, 0.4, 1.8],
+    at_risk:          [1.8, 2.5, 1.2, 0.5, 0.8, 1.5, 0.6, 0.3, 2.0, 0.4],
+    new_user:         [2.0, 0.8, 0.5, 0.3, 1.5, 2.2, 0.6, 0.4, 1.2, 1.8],
+    regular:          [0.6, 1.5, 2.0, 1.8, 0.4, 0.8, 1.2, 0.5, 0.3, 2.2],
+    abandoned_search: [1.2, 1.8, 2.5, 0.4, 0.6, 0.8, 0.3, 0.5, 2.2, 1.5],
+};
+
+function generateShapValues(probability: number, seed: number, segment?: string): ShapFactor[] {
+    const rng = seededRandom(seed * 7919);  // larger prime for more spread
     const baseValue = 0.35;
     const diff = probability - baseValue;
+    const biases = segment && SEGMENT_BIASES[segment] ? SEGMENT_BIASES[segment] : FEATURES.map(() => 1);
 
-    const rawValues = FEATURES.map(() => (rng() - 0.5) * 0.4);
+    // Generate raw values with segment-specific biases for variety
+    const rawValues = FEATURES.map((_, i) => {
+        const base = (rng() - 0.5) * 0.4;
+        // Apply bias and per-user variation
+        return base * biases[i] * (0.5 + rng());
+    });
     const rawSum = rawValues.reduce((a, b) => a + b, 0);
-    const scaled = rawValues.map(v => (v / rawSum) * diff);
+    const scaled = rawSum === 0
+        ? rawValues.map(() => diff / FEATURES.length)
+        : rawValues.map(v => (v / rawSum) * diff);
 
     return FEATURES.map((feature, i) => ({
         feature,
@@ -223,7 +240,7 @@ function generateMockUsers(): User[] {
             const rng = seededRandom(id * 37);
             const probability = Math.round((churnRange[0] + rng() * (churnRange[1] - churnRange[0])) * 100) / 100;
             const riskLevel = probability < 0.3 ? 'low' : probability < 0.7 ? 'medium' : 'high';
-            const shapValues = generateShapValues(probability, id);
+            const shapValues = generateShapValues(probability, id, segment);
             const daysAgo = Math.floor(rng() * 30) + 1;
 
             users.push({
@@ -270,7 +287,7 @@ function generateUserProfile(userId: string): UserProfile | null {
     if (!user) return null;
 
     const rng = seededRandom(parseInt(userId.split('_')[1]) * 13);
-    const shapValues = generateShapValues(user.churnPrediction.probability, parseInt(userId.split('_')[1]));
+    const shapValues = generateShapValues(user.churnPrediction.probability, parseInt(userId.split('_')[1]), user.segment);
 
     const searchHistory = Array.from({ length: 8 }, (_, i) => {
         const qi = Math.floor(rng() * TRAVEL_QUERIES.length);
