@@ -4,30 +4,23 @@ import { generateId } from '../utils';
 
 interface AssistantState {
     messages: ChatMessage[];
-    isOpen: boolean;
+    isCommandOpen: boolean;
     isLoading: boolean;
 
-    togglePanel: () => void;
-    setOpen: (open: boolean) => void;
+    toggleCommand: () => void;
+    setCommandOpen: (open: boolean) => void;
     addMessage: (role: 'user' | 'assistant', content: string, toolsUsed?: string[]) => void;
     setLoading: (loading: boolean) => void;
     clearMessages: () => void;
 }
 
 export const useAssistantStore = create<AssistantState>((set) => ({
-    messages: [
-        {
-            id: 'welcome',
-            role: 'assistant',
-            content: "Ask me anything about your search analytics. Try: \"Why is user_1008 at risk of churning?\"",
-            timestamp: new Date().toISOString(),
-        },
-    ],
-    isOpen: false,
+    messages: [],
+    isCommandOpen: false,
     isLoading: false,
 
-    togglePanel: () => set((state) => ({ isOpen: !state.isOpen })),
-    setOpen: (open) => set({ isOpen: open }),
+    toggleCommand: () => set((state) => ({ isCommandOpen: !state.isCommandOpen })),
+    setCommandOpen: (open) => set({ isCommandOpen: open }),
     addMessage: (role, content, toolsUsed) =>
         set((state) => ({
             messages: [
@@ -42,15 +35,5 @@ export const useAssistantStore = create<AssistantState>((set) => ({
             ],
         })),
     setLoading: (loading) => set({ isLoading: loading }),
-    clearMessages: () =>
-        set({
-            messages: [
-                {
-                    id: 'welcome',
-                    role: 'assistant',
-                    content: "Ask me anything about your search analytics. Try: \"Why is user_1008 at risk of churning?\"",
-                    timestamp: new Date().toISOString(),
-                },
-            ],
-        }),
+    clearMessages: () => set({ messages: [] }),
 }));

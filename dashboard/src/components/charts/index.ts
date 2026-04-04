@@ -4,3 +4,6 @@ export { PieChart } from './PieChart';
 export { AreaChart } from './AreaChart';
 export { FunnelChart, HorizontalFunnel } from './FunnelChart';
 export { ChartContainer } from './ChartContainer';
+export { AnimatedSparkline } from './AnimatedSparkline';
+export { RiskGauge } from './RiskGauge';
+export { AnimatedFunnel } from './AnimatedFunnel';
