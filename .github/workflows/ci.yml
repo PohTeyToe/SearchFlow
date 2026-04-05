@@ -55,7 +55,7 @@ jobs:
         run: pip install ruff
 
       - name: Lint Python code
-        run: ruff check event_generator/ reverse_etl/ scripts/ --ignore E501
+        run: ruff check event_generator/ reverse_etl/ scripts/ kafka_consumer/ search_assistant/ --ignore E501
         continue-on-error: true
 
   python-test:
@@ -115,6 +115,26 @@ jobs:
       - name: Run MLflow tests
         working-directory: ./ml_engine
         run: python -m pytest tests/ -v --tb=short -k "mlflow"
+
+  kafka-test:
+    name: Kafka Consumer Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pytest confluent-kafka duckdb python-dotenv
+
+      - name: Run Kafka consumer tests
+        working-directory: ./kafka_consumer
+        run: python -m pytest tests/ -v --tb=short
 
   search-assistant-test:
     name: Search Assistant Tests
