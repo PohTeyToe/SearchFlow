@@ -138,10 +138,17 @@ export interface UserRecommendation {
     reason: string;
 }
 
+export interface ActivityEvent {
+    type: 'search' | 'click' | 'abandonment' | 'booking';
+    description: string;
+    timestamp: string;
+}
+
 export interface UserProfile extends User {
     shapValues: ShapFactor[];
     searchHistory: UserSearchEvent[];
     recommendations: UserRecommendation[];
+    activityEvents: ActivityEvent[];
 }
 
 // Chat Types

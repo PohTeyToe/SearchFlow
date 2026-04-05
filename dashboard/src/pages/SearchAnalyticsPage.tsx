@@ -1,192 +1,251 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MainLayout } from '../components/layout';
-import { SearchInput, ResultsTable } from '../components/search';
-import { ChartContainer, HorizontalFunnel, AreaChart } from '../components/charts';
-import { StatCard } from '../components/metrics/StatCard';
-import { Card } from '../components/ui/Card';
-import { Tabs, TabList, Tab, TabPanel } from '../components/ui/Tabs';
-import { useSearchFunnel, useTopQueries, useUserSegments, useSearch, useDebounce } from '../hooks';
-import { useSearchStore } from '../stores';
-import { SkeletonCard, SkeletonTable } from '../components/ui';
-import { Search, Users, TrendingUp, BarChart3 } from 'lucide-react';
+import { AnimatedNumber } from '../components/motion/AnimatedNumber';
+import { StaggerContainer, staggerItem } from '../components/motion/StaggerContainer';
+import { AnimatedFunnel } from '../components/charts/AnimatedFunnel';
+import { ScrollReveal } from '../components/motion/ScrollReveal';
+import { useSearchFunnel, useTopQueries, useUserSegments } from '../hooks';
+import { Search, BarChart3, Users, Layers } from 'lucide-react';
+
+type TabId = 'funnel' | 'queries' | 'segments';
+
+const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
+    { id: 'funnel', label: 'Funnel', icon: <Layers className="w-3.5 h-3.5" /> },
+    { id: 'queries', label: 'Top Queries', icon: <Search className="w-3.5 h-3.5" /> },
+    { id: 'segments', label: 'Segments', icon: <Users className="w-3.5 h-3.5" /> },
+];
 
 export const SearchAnalyticsPage: React.FC = () => {
-    const [searchQuery, setSearchQuery] = useState('');
-    const debouncedQuery = useDebounce(searchQuery, 300);
+    const [activeTab, setActiveTab] = useState<TabId>('funnel');
 
-    const { data: funnelData, isLoading: funnelLoading } = useSearchFunnel();
-    const { data: topQueries, isLoading: queriesLoading } = useTopQueries();
-    const { data: userSegments, isLoading: segmentsLoading } = useUserSegments();
-    const { data: searchResults, isLoading: searchLoading } = useSearch(debouncedQuery);
+    const { data: funnelData } = useSearchFunnel();
+    const { data: topQueries } = useTopQueries();
+    const { data: userSegments } = useUserSegments();
 
-    const { isSearching } = useSearchStore();
-
-    // Calculate stats
+    // Funnel totals
     const totalSearches = funnelData?.reduce((sum, d) => sum + d.searches, 0) || 0;
     const totalClicks = funnelData?.reduce((sum, d) => sum + d.clicks, 0) || 0;
     const totalConversions = funnelData?.reduce((sum, d) => sum + d.conversions, 0) || 0;
-    const avgClickRate = totalSearches > 0 ? ((totalClicks / totalSearches) * 100) : 0;
-    const avgConversionRate = totalSearches > 0 ? ((totalConversions / totalSearches) * 100) : 0;
-
-    // Funnel chart data with travel labels
-    const funnelChartData = [
-        { name: 'Searches', value: totalSearches, fill: '#3b82f6' },
-        { name: 'Views', value: totalClicks, fill: '#8b5cf6' },
-        { name: 'Bookings', value: totalConversions, fill: '#10b981' },
-    ];
-
-    const handleSearch = useCallback((query: string) => {
-        setSearchQuery(query);
-    }, []);
 
     return (
         <MainLayout
-            title="Destination Analytics"
-            subtitle="Understand travel search behavior and booking conversions"
+            title="Search Analytics"
+            subtitle="Understand search behavior and booking conversions"
         >
-            {/* Search Bar */}
-            <div className="mb-6">
-                <SearchInput
-                    value={searchQuery}
-                    onChange={setSearchQuery}
-                    onSearch={handleSearch}
-                    placeholder="Search queries..."
-                    isLoading={isSearching || searchLoading}
-                    debounceMs={300}
-                    className="max-w-md"
-                />
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <StatCard
-                    title="Destination Searches"
-                    value={totalSearches}
-                    trend={{ value: 7.3, label: 'vs last week' }}
-                    icon={<Search className="w-6 h-6" />}
-                />
-                <StatCard
-                    title="Click-through Rate"
-                    value={`${avgClickRate.toFixed(1)}%`}
-                    trend={{ value: 2.1, label: 'vs last week' }}
-                    icon={<TrendingUp className="w-6 h-6" />}
-                />
-                <StatCard
-                    title="Booking Rate"
-                    value={`${avgConversionRate.toFixed(1)}%`}
-                    trend={{ value: 1.5, label: 'vs last week' }}
-                    icon={<BarChart3 className="w-6 h-6" />}
-                />
-                <StatCard
-                    title="Unique Users"
-                    value={userSegments?.reduce((sum, s) => sum + s.userCount, 0) || 0}
-                    icon={<Users className="w-6 h-6" />}
-                />
-            </div>
-
-            {/* Tabs */}
-            <Tabs defaultValue="overview">
-                <TabList className="mb-6">
-                    <Tab value="overview">Overview</Tab>
-                    <Tab value="queries">Top Queries</Tab>
-                    <Tab value="segments">User Segments</Tab>
-                </TabList>
-
-                <TabPanel value="overview">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        {/* Funnel */}
-                        <ChartContainer
-                            title="Booking Funnel"
-                            subtitle="Search → View → Book (Last 7 days)"
-                            isLoading={funnelLoading}
-                        >
-                            <HorizontalFunnel data={funnelChartData} />
-                        </ChartContainer>
-
-                        {/* Trend Chart */}
-                        <ChartContainer
-                            title="Daily Trends"
-                            subtitle="Searches, clicks, and conversions"
-                            isLoading={funnelLoading}
-                        >
-                            {funnelData && (
-                                <AreaChart
-                                    data={funnelData.map((d) => ({
-                                        date: d.date,
-                                        searches: d.searches,
-                                        clicks: d.clicks,
-                                        conversions: d.conversions,
-                                    }))}
-                                    areas={[
-                                        { dataKey: 'searches', name: 'Searches', color: '#3b82f6' },
-                                        { dataKey: 'clicks', name: 'Views', color: '#8b5cf6' },
-                                        { dataKey: 'conversions', name: 'Bookings', color: '#10b981' },
-                                    ]}
-                                    xAxisKey="date"
-                                    height={250}
-                                    stacked={false}
-                                />
-                            )}
-                        </ChartContainer>
-                    </div>
-                </TabPanel>
-
-                <TabPanel value="queries">
-                    <Card>
-                        <h3 className="font-semibold text-[var(--color-text-primary)] mb-4">
-                            Top Search Queries
-                            {debouncedQuery && (
-                                <span className="ml-2 text-sm font-normal text-[var(--color-text-secondary)]">
-                                    filtered by "{debouncedQuery}"
-                                </span>
-                            )}
-                        </h3>
-                        {queriesLoading || searchLoading ? (
-                            <SkeletonTable rows={8} />
-                        ) : (
-                            <ResultsTable
-                                data={debouncedQuery ? (searchResults || []) : (topQueries || [])}
+            {/* Tab bar with sliding indicator */}
+            <div className="flex items-center gap-1 mb-8 p-1 rounded-lg w-fit" style={{ backgroundColor: 'var(--bg-card)' }}>
+                {tabs.map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className="relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors z-10"
+                        style={{
+                            color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-muted)',
+                        }}
+                    >
+                        {activeTab === tab.id && (
+                            <motion.div
+                                layoutId="activeTab"
+                                className="absolute inset-0 rounded-md"
+                                style={{
+                                    backgroundColor: 'var(--bg-card-hover)',
+                                    border: '1px solid var(--border-subtle)',
+                                }}
+                                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                             />
                         )}
-                    </Card>
-                </TabPanel>
+                        <span className="relative z-10 flex items-center gap-2">
+                            {tab.icon}
+                            {tab.label}
+                        </span>
+                    </button>
+                ))}
+            </div>
 
-                <TabPanel value="segments">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {segmentsLoading ? (
-                            [1, 2, 3, 4].map((i) => <SkeletonCard key={i} lines={3} />)
-                        ) : (
-                            userSegments?.map((segment) => (
-                                <Card key={segment.segmentId}>
-                                    <h4 className="font-semibold text-[var(--color-text-primary)] mb-2">
+            {/* Tab content */}
+            <AnimatePresence mode="wait">
+                {activeTab === 'funnel' && (
+                    <motion.div
+                        key="funnel"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+                    >
+                        <ScrollReveal>
+                            <div
+                                className="rounded-2xl p-8"
+                                style={{
+                                    backgroundColor: 'var(--bg-card)',
+                                    border: '1px solid var(--border-subtle)',
+                                }}
+                            >
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div
+                                        className="w-6 h-6 rounded-md flex items-center justify-center"
+                                        style={{ backgroundColor: 'var(--accent-subtle)' }}
+                                    >
+                                        <BarChart3 className="w-3.5 h-3.5" style={{ color: 'var(--accent)' }} />
+                                    </div>
+                                    <h2 className="text-lg font-semibold tracking-tight">
+                                        Booking Funnel
+                                    </h2>
+                                </div>
+                                <p className="text-xs mb-8" style={{ color: 'var(--text-muted)' }}>
+                                    Search to Book conversion -- last 7 days
+                                </p>
+                                <AnimatedFunnel
+                                    steps={[
+                                        { label: 'Searches', value: totalSearches, color: 'var(--accent)' },
+                                        { label: 'Clicks', value: totalClicks, color: 'var(--chart-4, oklch(0.65 0.15 290))' },
+                                        { label: 'Conversions', value: totalConversions, color: 'var(--success)' },
+                                    ]}
+                                />
+                            </div>
+                        </ScrollReveal>
+                    </motion.div>
+                )}
+
+                {activeTab === 'queries' && (
+                    <motion.div
+                        key="queries"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+                    >
+                        <div
+                            className="rounded-2xl overflow-hidden"
+                            style={{
+                                backgroundColor: 'var(--bg-card)',
+                                border: '1px solid var(--border-subtle)',
+                            }}
+                        >
+                            <div className="px-6 py-5">
+                                <h2 className="text-lg font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                                    Top Search Queries
+                                </h2>
+                                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                                    Ranked by search volume
+                                </p>
+                            </div>
+                            <table className="w-full">
+                                <thead>
+                                    <tr style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                                            Query
+                                        </th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                                            Count
+                                        </th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                                            Avg Position
+                                        </th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                                            Click Rate
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(topQueries || []).map((query, i) => (
+                                        <motion.tr
+                                            key={query.query}
+                                            className="transition-colors"
+                                            style={{ borderTop: '1px solid var(--border-subtle)' }}
+                                            initial={{ opacity: 0, y: 12 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{
+                                                duration: 0.3,
+                                                delay: 0.1 + i * 0.05,
+                                                ease: [0.05, 0.7, 0.1, 1],
+                                            }}
+                                            whileHover={{ backgroundColor: 'var(--bg-card-hover)' }}
+                                        >
+                                            <td className="px-6 py-3">
+                                                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                                    {query.query}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-3 text-right">
+                                                <span className="text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                                                    {query.count.toLocaleString()}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-3 text-right">
+                                                <span className="text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                                                    {query.avgPosition.toFixed(1)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-3 text-right">
+                                                <span className="text-sm tabular-nums font-medium" style={{ color: 'var(--accent)' }}>
+                                                    {(query.clickRate * 100).toFixed(0)}%
+                                                </span>
+                                            </td>
+                                        </motion.tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'segments' && (
+                    <motion.div
+                        key="segments"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+                    >
+                        <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-4" staggerDelay={0.08} initialDelay={0.1}>
+                            {(userSegments || []).map((segment) => (
+                                <motion.div
+                                    key={segment.segmentId}
+                                    variants={staggerItem}
+                                    className="rounded-xl border p-6"
+                                    style={{
+                                        backgroundColor: 'var(--bg-card)',
+                                        borderColor: 'var(--border-subtle)',
+                                    }}
+                                >
+                                    <h3 className="text-base font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
                                         {segment.name}
-                                    </h4>
-                                    <div className="grid grid-cols-3 gap-4 text-center">
+                                    </h3>
+                                    <div className="grid grid-cols-3 gap-4">
                                         <div>
-                                            <p className="text-2xl font-bold text-[var(--color-text-primary)]">
-                                                {segment.userCount.toLocaleString()}
-                                            </p>
-                                            <p className="text-xs text-[var(--color-text-secondary)]">Users</p>
+                                            <AnimatedNumber
+                                                value={segment.userCount}
+                                                className="text-2xl font-bold tabular-nums block"
+                                                duration={1}
+                                            />
+                                            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Users</p>
                                         </div>
                                         <div>
-                                            <p className="text-2xl font-bold text-[var(--color-text-primary)]">
-                                                {segment.avgSearches.toFixed(1)}
-                                            </p>
-                                            <p className="text-xs text-[var(--color-text-secondary)]">Avg Searches</p>
+                                            <AnimatedNumber
+                                                value={segment.avgSearches}
+                                                format={(n) => n.toFixed(1)}
+                                                className="text-2xl font-bold tabular-nums block"
+                                                duration={1}
+                                            />
+                                            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Avg Searches</p>
                                         </div>
                                         <div>
-                                            <p className="text-2xl font-bold text-emerald-500">
-                                                {segment.conversionRate.toFixed(1)}%
-                                            </p>
-                                            <p className="text-xs text-[var(--color-text-secondary)]">Conversion</p>
+                                            <AnimatedNumber
+                                                value={segment.conversionRate}
+                                                format={(n) => `${n.toFixed(1)}%`}
+                                                className="text-2xl font-bold tabular-nums block"
+                                                duration={1}
+                                            />
+                                            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Conversion</p>
                                         </div>
                                     </div>
-                                </Card>
-                            ))
-                        )}
-                    </div>
-                </TabPanel>
-            </Tabs>
+                                </motion.div>
+                            ))}
+                        </StaggerContainer>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </MainLayout>
     );
 };

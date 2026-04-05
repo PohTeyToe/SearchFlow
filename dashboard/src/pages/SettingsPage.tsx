@@ -18,11 +18,11 @@ export const SettingsPage: React.FC = () => {
             <div className="max-w-2xl space-y-6">
                 {/* Appearance */}
                 <Card>
-                    <h3 className="font-semibold text-[var(--color-text-primary)] mb-4">Appearance</h3>
+                    <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Appearance</h3>
 
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                                 Theme
                             </label>
                             <div className="flex gap-2">
@@ -51,7 +51,7 @@ export const SettingsPage: React.FC = () => {
                                     System
                                 </Button>
                             </div>
-                            <p className="text-xs text-[var(--color-text-muted)] mt-2">
+                            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
                                 Current: {resolvedTheme} mode
                             </p>
                         </div>
@@ -60,7 +60,7 @@ export const SettingsPage: React.FC = () => {
 
                 {/* Data Refresh */}
                 <Card>
-                    <h3 className="font-semibold text-[var(--color-text-primary)] mb-4">Data Refresh</h3>
+                    <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Data Refresh</h3>
 
                     <div className="space-y-4">
                         <Select
@@ -85,7 +85,7 @@ export const SettingsPage: React.FC = () => {
 
                 {/* Notifications */}
                 <Card>
-                    <h3 className="font-semibold text-[var(--color-text-primary)] mb-4">Notifications</h3>
+                    <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Notifications</h3>
 
                     <div className="space-y-3">
                         <Checkbox
@@ -108,11 +108,11 @@ export const SettingsPage: React.FC = () => {
 
                 {/* About */}
                 <Card>
-                    <h3 className="font-semibold text-[var(--color-text-primary)] mb-4">About</h3>
-                    <div className="space-y-2 text-sm text-[var(--color-text-secondary)]">
+                    <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>About</h3>
+                    <div className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                         <p><strong>SearchFlow Dashboard</strong> v1.0.0</p>
                         <p>Built with React, TypeScript, Zustand, and Tailwind CSS</p>
-                        <p className="text-xs text-[var(--color-text-muted)]">
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                             © 2024 SearchFlow Analytics
                         </p>
                     </div>

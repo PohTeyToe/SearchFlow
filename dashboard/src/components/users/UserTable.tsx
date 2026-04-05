@@ -1,12 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card } from '../ui/Card';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChurnBadge } from './ChurnBadge';
 import { Badge } from '../ui/Badge';
-import { Input } from '../ui/Input';
-import { Select } from '../ui/Select';
 import { ArrowUpDown, Search } from 'lucide-react';
-import { cn, formatRelativeTime } from '../../utils';
+import { formatRelativeTime } from '../../utils';
 import type { User, UserSegment2 } from '../../types';
 
 interface UserTableProps {
@@ -31,6 +29,27 @@ const SEGMENT_VARIANTS: Record<UserSegment2, 'success' | 'error' | 'info' | 'def
     regular: 'default',
     abandoned_search: 'warning',
 };
+
+const SEGMENT_FILTERS: { value: string; label: string }[] = [
+    { value: 'all', label: 'All' },
+    { value: 'high_value', label: 'High Value' },
+    { value: 'at_risk', label: 'At Risk' },
+    { value: 'new_user', label: 'New User' },
+    { value: 'regular', label: 'Regular' },
+    { value: 'abandoned_search', label: 'Abandoned' },
+];
+
+function getRiskColor(probability: number): string {
+    if (probability < 0.3) return 'var(--success)';
+    if (probability < 0.7) return 'var(--warning)';
+    return 'var(--danger)';
+}
+
+function getRiskBgColor(probability: number): string {
+    if (probability < 0.3) return 'rgba(16, 185, 129, 0.1)';
+    if (probability < 0.7) return 'rgba(245, 158, 11, 0.1)';
+    return 'rgba(239, 68, 68, 0.1)';
+}
 
 export const UserTable: React.FC<UserTableProps> = ({ users }) => {
     const navigate = useNavigate();
@@ -80,91 +99,192 @@ export const UserTable: React.FC<UserTableProps> = ({ users }) => {
 
     const SortHeader: React.FC<{ field: SortField; children: React.ReactNode }> = ({ field, children }) => (
         <th
-            className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text-primary)] select-none"
+            className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer select-none transition-colors"
+            style={{ color: sortField === field ? 'var(--text-primary)' : 'var(--text-muted)' }}
             onClick={() => handleSort(field)}
         >
             <span className="inline-flex items-center gap-1">
                 {children}
-                <ArrowUpDown className={cn('w-3 h-3', sortField === field ? 'text-blue-500' : 'opacity-40')} />
+                <ArrowUpDown
+                    className="w-3 h-3"
+                    style={{
+                        color: sortField === field ? 'var(--accent)' : undefined,
+                        opacity: sortField === field ? 1 : 0.4,
+                    }}
+                />
             </span>
         </th>
     );
 
     return (
         <div>
-            <div className="flex gap-3 mb-4">
+            {/* Controls: search + segment filter tabs */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                {/* Search input with glowing accent border on focus */}
                 <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
-                    <Input
+                    <Search
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                        style={{ color: 'var(--text-muted)' }}
+                    />
+                    <input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search users..."
-                        className="pl-9"
+                        className="w-full pl-9 pr-3 py-2 rounded-lg text-sm outline-none transition-all duration-200"
+                        style={{
+                            backgroundColor: 'var(--bg-card)',
+                            border: '1px solid var(--border-subtle)',
+                            color: 'var(--text-primary)',
+                        }}
+                        onFocus={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--accent)';
+                            e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-subtle)';
+                        }}
+                        onBlur={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                            e.currentTarget.style.boxShadow = 'none';
+                        }}
                     />
                 </div>
-                <Select
-                    value={segmentFilter}
-                    onChange={(v) => setSegmentFilter(v)}
-                    options={[
-                        { value: 'all', label: 'All Segments' },
-                        { value: 'high_value', label: 'High Value' },
-                        { value: 'at_risk', label: 'At Risk' },
-                        { value: 'new_user', label: 'New User' },
-                        { value: 'regular', label: 'Regular' },
-                        { value: 'abandoned_search', label: 'Abandoned Search' },
-                    ]}
-                />
+
+                {/* Animated segment filter tabs */}
+                <div
+                    className="flex items-center gap-1 p-1 rounded-lg"
+                    style={{ backgroundColor: 'var(--bg-card)' }}
+                >
+                    {SEGMENT_FILTERS.map((seg) => (
+                        <button
+                            key={seg.value}
+                            onClick={() => setSegmentFilter(seg.value)}
+                            className="relative px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap"
+                            style={{
+                                color: segmentFilter === seg.value ? 'var(--text-primary)' : 'var(--text-muted)',
+                            }}
+                        >
+                            {segmentFilter === seg.value && (
+                                <motion.div
+                                    layoutId="segment-indicator"
+                                    className="absolute inset-0 rounded-md"
+                                    style={{ backgroundColor: 'var(--accent-subtle)' }}
+                                    transition={{ type: 'spring', bounce: 0.15, duration: 0.5 }}
+                                />
+                            )}
+                            <span className="relative z-10">{seg.label}</span>
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            <Card className="overflow-hidden !p-0">
+            {/* Table container */}
+            <div
+                className="rounded-xl overflow-hidden"
+                style={{
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-subtle)',
+                }}
+            >
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-[var(--color-bg-tertiary)]">
-                            <tr>
+                        <thead>
+                            <tr
+                                style={{
+                                    borderBottom: '1px solid var(--border-subtle)',
+                                }}
+                            >
                                 <SortHeader field="userId">User ID</SortHeader>
                                 <SortHeader field="churnProbability">Churn Risk</SortHeader>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                                <th
+                                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                                    style={{ color: 'var(--text-muted)' }}
+                                >
                                     Top Factor
                                 </th>
                                 <SortHeader field="lastActive">Last Active</SortHeader>
                                 <SortHeader field="segment">Segment</SortHeader>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-[var(--color-border)]">
-                            {filtered.map((user) => (
-                                <tr
-                                    key={user.userId}
-                                    onClick={() => navigate(`/users/${user.userId}`)}
-                                    className="cursor-pointer hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                                >
-                                    <td className="px-4 py-3 text-sm font-mono text-[var(--color-text-primary)]">
-                                        {user.userId}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <ChurnBadge probability={user.churnPrediction.probability} />
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-                                        {user.churnPrediction.topFactors[0]?.featureLabel || '—'}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-                                        {formatRelativeTime(user.lastActive)}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <Badge variant={SEGMENT_VARIANTS[user.segment]} size="sm">
-                                            {SEGMENT_LABELS[user.segment]}
-                                        </Badge>
-                                    </td>
-                                </tr>
-                            ))}
+                        <tbody>
+                            <AnimatePresence mode="popLayout">
+                                {filtered.map((user, index) => (
+                                    <motion.tr
+                                        key={user.userId}
+                                        initial={{ opacity: 0, y: 12 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -8 }}
+                                        transition={{
+                                            delay: index * 0.03,
+                                            duration: 0.3,
+                                            ease: [0.2, 0, 0, 1],
+                                        }}
+                                        whileHover={{ y: -2 }}
+                                        onClick={() => navigate(`/users/${user.userId}`)}
+                                        className="cursor-pointer transition-colors"
+                                        style={{
+                                            borderBottom: '1px solid var(--border-subtle)',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-card-hover)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                                        }}
+                                    >
+                                        <td
+                                            className="px-4 py-3 text-sm font-mono"
+                                            style={{ color: 'var(--text-primary)' }}
+                                        >
+                                            {user.userId}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-3">
+                                                {/* Mini progress bar */}
+                                                <div
+                                                    className="w-16 h-1.5 rounded-full overflow-hidden flex-shrink-0"
+                                                    style={{ backgroundColor: getRiskBgColor(user.churnPrediction.probability) }}
+                                                >
+                                                    <motion.div
+                                                        className="h-full rounded-full"
+                                                        style={{ backgroundColor: getRiskColor(user.churnPrediction.probability) }}
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${user.churnPrediction.probability * 100}%` }}
+                                                        transition={{ delay: index * 0.03 + 0.2, duration: 0.6, ease: 'easeOut' }}
+                                                    />
+                                                </div>
+                                                <ChurnBadge probability={user.churnPrediction.probability} size="sm" />
+                                            </div>
+                                        </td>
+                                        <td
+                                            className="px-4 py-3 text-sm"
+                                            style={{ color: 'var(--text-secondary)' }}
+                                        >
+                                            {user.churnPrediction.topFactors[0]?.featureLabel || '\u2014'}
+                                        </td>
+                                        <td
+                                            className="px-4 py-3 text-sm"
+                                            style={{ color: 'var(--text-secondary)' }}
+                                        >
+                                            {formatRelativeTime(user.lastActive)}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <Badge variant={SEGMENT_VARIANTS[user.segment]} size="sm">
+                                                {SEGMENT_LABELS[user.segment]}
+                                            </Badge>
+                                        </td>
+                                    </motion.tr>
+                                ))}
+                            </AnimatePresence>
                         </tbody>
                     </table>
                 </div>
                 {filtered.length === 0 && (
-                    <div className="py-12 text-center text-[var(--color-text-muted)]">
+                    <div
+                        className="py-12 text-center text-sm"
+                        style={{ color: 'var(--text-muted)' }}
+                    >
                         No users match your filters
                     </div>
                 )}
-            </Card>
+            </div>
         </div>
     );
 };

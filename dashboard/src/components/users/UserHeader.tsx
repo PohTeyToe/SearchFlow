@@ -1,11 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
-import { ChurnBadge } from './ChurnBadge';
 import { ArrowLeft } from 'lucide-react';
-import { Button } from '../ui/Button';
 import { formatRelativeTime } from '../../utils';
+import { RiskGauge } from '../charts/RiskGauge';
 import type { UserProfile } from '../../types';
 
 const SEGMENT_LABELS: Record<string, string> = {
@@ -30,47 +28,43 @@ interface UserHeaderProps {
 
 export const UserHeader: React.FC<UserHeaderProps> = ({ user }) => {
     const navigate = useNavigate();
-    const pct = Math.round(user.churnPrediction.probability * 100);
-    const riskColors = {
-        low: 'text-emerald-500',
-        medium: 'text-amber-500',
-        high: 'text-red-500',
-    };
 
     return (
-        <Card>
-            <div className="flex items-start justify-between">
+        <div
+            className="relative rounded-xl border border-[var(--border-subtle)] p-6 noise-overlay"
+            style={{
+                background: 'rgba(var(--bg-card-rgb, 30, 30, 46), 0.6)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+            }}
+        >
+            <div className="flex items-center justify-between">
+                {/* Left side */}
                 <div className="flex items-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="sm"
+                    <button
                         onClick={() => navigate('/users')}
+                        className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)] transition-colors"
                     >
-                        <ArrowLeft className="w-4 h-4" />
-                    </Button>
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
                     <div>
                         <div className="flex items-center gap-3">
-                            <h2 className="text-xl font-bold text-[var(--color-text-primary)] font-mono">
+                            <h2 className="text-2xl font-bold text-[var(--text-primary)] font-mono tracking-tight">
                                 {user.userId}
                             </h2>
                             <Badge variant={SEGMENT_VARIANTS[user.segment]}>
                                 {SEGMENT_LABELS[user.segment]}
                             </Badge>
                         </div>
-                        <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+                        <p className="text-sm text-[var(--text-muted)] mt-1">
                             Last active {formatRelativeTime(user.lastActive)}
                         </p>
                     </div>
                 </div>
 
-                <div className="text-right">
-                    <p className="text-sm text-[var(--color-text-secondary)] mb-1">Churn Risk</p>
-                    <p className={`text-4xl font-bold ${riskColors[user.churnPrediction.riskLevel]}`}>
-                        {pct}%
-                    </p>
-                    <ChurnBadge probability={user.churnPrediction.probability} size="sm" />
-                </div>
+                {/* Right side: RiskGauge */}
+                <RiskGauge probability={user.churnPrediction.probability} size={140} />
             </div>
-        </Card>
+        </div>
     );
 };

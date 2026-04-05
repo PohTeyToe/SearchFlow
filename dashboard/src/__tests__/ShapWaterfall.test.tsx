@@ -1,15 +1,6 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ShapWaterfall } from '../components/users/ShapWaterfall';
-
-// Recharts ResponsiveContainer needs ResizeObserver
-beforeAll(() => {
-    global.ResizeObserver = class {
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-    };
-});
 
 const mockShapValues = [
     { feature: 'days_since_last_activity', featureLabel: 'Days inactive', value: 0.23, direction: 'increases' as const },
@@ -28,7 +19,7 @@ describe('ShapWaterfall', () => {
                 finalPrediction={0.42}
             />
         );
-        expect(screen.getByText('SHAP Feature Attribution')).toBeInTheDocument();
+        expect(screen.getByText('Why is this user at risk?')).toBeInTheDocument();
     });
 
     it('shows base value and final prediction', () => {
@@ -39,8 +30,8 @@ describe('ShapWaterfall', () => {
                 finalPrediction={0.42}
             />
         );
-        expect(screen.getByText(/Base value: 35%/)).toBeInTheDocument();
-        expect(screen.getByText(/Final prediction: 42%/)).toBeInTheDocument();
+        expect(screen.getByText(/Base: 35%/)).toBeInTheDocument();
+        expect(screen.getByText(/Final: 42%/)).toBeInTheDocument();
     });
 
     it('shows the legend', () => {
@@ -55,7 +46,7 @@ describe('ShapWaterfall', () => {
         expect(screen.getByText('Increases risk')).toBeInTheDocument();
     });
 
-    it('renders feature description text', () => {
+    it('renders feature labels', () => {
         render(
             <ShapWaterfall
                 shapValues={mockShapValues}
@@ -63,6 +54,7 @@ describe('ShapWaterfall', () => {
                 finalPrediction={0.42}
             />
         );
-        expect(screen.getByText(/How each feature contributes/)).toBeInTheDocument();
+        expect(screen.getByText('Days inactive')).toBeInTheDocument();
+        expect(screen.getByText('Lifetime value ($)')).toBeInTheDocument();
     });
 });

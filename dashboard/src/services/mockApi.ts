@@ -1,4 +1,4 @@
-import type { DAG, DAGRun, DataQualityMetric, RecordCount, PipelineMetrics, SearchFunnelData, SearchQuery, UserSegment, User, UserProfile, ShapFactor } from '../types';
+import type { DAG, DAGRun, DataQualityMetric, RecordCount, PipelineMetrics, SearchFunnelData, SearchQuery, UserSegment, User, UserProfile, ShapFactor, ActivityEvent } from '../types';
 import type { UserSegment2 } from '../types';
 import { sleep } from '../utils';
 
@@ -282,12 +282,76 @@ const DESTINATIONS = [
     { destination: 'Santorini, Greece', reason: 'High affinity score for islands' },
 ];
 
+const ACTIVITY_TEMPLATES: Record<ActivityEvent['type'], string[]> = {
+    search: [
+        'Searched for "flights to Cancun"',
+        'Searched for "Tokyo hotels March"',
+        'Searched for "cheap flights Europe"',
+        'Searched for "Bali resorts all inclusive"',
+        'Searched for "Paris weekend deals"',
+        'Searched for "Caribbean cruise 2024"',
+    ],
+    click: [
+        'Clicked on Cancun resort listing',
+        'Viewed Tokyo flight details',
+        'Opened Barcelona hotel page',
+        'Clicked on Bali villa deal',
+        'Viewed Lisbon Airbnb listing',
+        'Expanded cruise itinerary details',
+    ],
+    abandonment: [
+        'Left search results without clicking',
+        'Abandoned checkout for flight booking',
+        'Closed tab after viewing prices',
+        'Exited during payment step',
+        'Dropped off at seat selection',
+        'Left after filtering zero results',
+    ],
+    booking: [
+        'Booked round-trip to Barcelona',
+        'Confirmed hotel in Santorini',
+        'Completed cruise reservation',
+        'Booked rental car in Lisbon',
+        'Reserved adventure tour in Reykjavik',
+        'Confirmed Bali villa for 5 nights',
+    ],
+};
+
+function generateActivityEvents(seed: number): ActivityEvent[] {
+    const rng = seededRandom(seed * 41);
+    const types: ActivityEvent['type'][] = ['search', 'click', 'abandonment', 'booking'];
+    const weights = [0.4, 0.3, 0.2, 0.1]; // search-heavy distribution
+
+    return Array.from({ length: 12 }, (_, i) => {
+        const roll = rng();
+        let cumulative = 0;
+        let type: ActivityEvent['type'] = 'search';
+        for (let j = 0; j < weights.length; j++) {
+            cumulative += weights[j];
+            if (roll < cumulative) {
+                type = types[j];
+                break;
+            }
+        }
+        const templates = ACTIVITY_TEMPLATES[type];
+        const description = templates[Math.floor(rng() * templates.length)];
+        const hoursAgo = (i + 1) * 2 + Math.floor(rng() * 6);
+
+        return {
+            type,
+            description,
+            timestamp: new Date(Date.now() - hoursAgo * 3600000).toISOString(),
+        };
+    });
+}
+
 function generateUserProfile(userId: string): UserProfile | null {
     const user = mockUsers.find(u => u.userId === userId);
     if (!user) return null;
 
-    const rng = seededRandom(parseInt(userId.split('_')[1]) * 13);
-    const shapValues = generateShapValues(user.churnPrediction.probability, parseInt(userId.split('_')[1]), user.segment);
+    const idNum = parseInt(userId.split('_')[1]);
+    const rng = seededRandom(idNum * 13);
+    const shapValues = generateShapValues(user.churnPrediction.probability, idNum, user.segment);
 
     const searchHistory = Array.from({ length: 8 }, (_, i) => {
         const qi = Math.floor(rng() * TRAVEL_QUERIES.length);
@@ -309,11 +373,14 @@ function generateUserProfile(userId: string): UserProfile | null {
             score: Math.round((0.6 + rng() * 0.35) * 100) / 100,
         }));
 
+    const activityEvents = generateActivityEvents(idNum);
+
     return {
         ...user,
         shapValues,
         searchHistory,
         recommendations,
+        activityEvents,
     };
 }
 
