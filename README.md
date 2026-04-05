@@ -148,9 +148,9 @@ Natural-language interface for querying search analytics, powered by LangChain a
 
 ```bash
 # Query the assistant
-curl -X POST http://localhost:8001/chat \
+curl -X POST http://localhost:8001/ask \
   -H "Content-Type: application/json" \
-  -d '{"message": "What is the conversion rate for hotel searches?"}'
+  -d '{"question": "What is the conversion rate for hotel searches?"}'
 
 # Check health
 curl http://localhost:8001/health

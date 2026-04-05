@@ -109,9 +109,11 @@ class SearchFlowConsumer:
                     time.sleep(delay)
                 else:
                     logger.error(
-                        "Failed to write to DuckDB after %d retries: %s",
-                        max_retries, e,
+                        "Failed to write to DuckDB after %d retries, committing offsets to avoid infinite retry loop. "
+                        "Data loss accepted for %d messages: %s",
+                        max_retries, len(self._batch), e,
                     )
+                    self.consumer.commit()
                     self._batch.clear()
                     self._last_flush = time.time()
 
