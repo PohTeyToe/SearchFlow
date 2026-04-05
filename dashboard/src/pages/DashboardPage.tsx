@@ -159,7 +159,7 @@ export const DashboardPage: React.FC = () => {
                         <BorderBeam duration={4.5}>
                             <div className="p-5 rounded-xl" style={{ backgroundColor: 'var(--bg-card)' }}>
                                 <div className="flex items-center justify-between mb-3">
-                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'oklch(0.72 0.19 160 / 0.1)' }}>
+                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
                                         <TrendingUp className="w-4 h-4" style={{ color: 'var(--success)' }} />
                                     </div>
                                     <AnimatedSparkline data={conversionTrend} color="var(--success)" />
@@ -180,7 +180,7 @@ export const DashboardPage: React.FC = () => {
                     {/* Users at Risk */}
                     <motion.div variants={staggerItem}>
                         <Link to="/users?sort=churn_desc" className="block">
-                            <BorderBeam duration={3.5} color="oklch(0.65 0.25 25)">
+                            <BorderBeam duration={3.5} color="#ef4444">
                                 <div className="p-5 rounded-xl" style={{ backgroundColor: 'var(--bg-card)' }}>
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--danger-glow)' }}>
@@ -218,7 +218,7 @@ export const DashboardPage: React.FC = () => {
                     <div
                         className="rounded-2xl p-8 noise-overlay"
                         style={{
-                            background: 'oklch(0.12 0 0 / 0.6)',
+                            background: 'rgba(26, 26, 26, 0.6)',
                             backdropFilter: 'blur(16px)',
                             border: '1px solid var(--border-subtle)',
                         }}

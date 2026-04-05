@@ -30,7 +30,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             <div
                 className="fixed inset-0 pointer-events-none z-0"
                 style={{
-                    backgroundImage: 'radial-gradient(circle, oklch(1 0 0 / 0.04) 1px, transparent 1px)',
+                    backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
                     backgroundSize: '24px 24px',
                 }}
             />

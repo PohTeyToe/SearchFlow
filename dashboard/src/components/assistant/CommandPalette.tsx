@@ -73,7 +73,7 @@ export const CommandPalette: React.FC = () => {
                     {/* Backdrop */}
                     <motion.div
                         className="fixed inset-0 z-50"
-                        style={{ backgroundColor: 'oklch(0.08 0 0 / 0.6)' }}
+                        style={{ backgroundColor: 'rgba(20, 20, 20, 0.6)' }}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -92,7 +92,7 @@ export const CommandPalette: React.FC = () => {
                         <div
                             className="w-full max-w-[640px] mx-4 overflow-hidden"
                             style={{
-                                background: 'oklch(0.12 0 0 / 0.8)',
+                                background: 'rgba(26, 26, 26, 0.8)',
                                 backdropFilter: 'blur(20px)',
                                 WebkitBackdropFilter: 'blur(20px)',
                                 border: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',

@@ -13,7 +13,7 @@ export function BorderBeam({
   className = '',
   duration = 3,
   size = 150,
-  color = 'oklch(0.65 0.25 270)',
+  color = '#6366f1',
 }: BorderBeamProps) {
   const style: CSSProperties & Record<string, string | number> = {
     '--beam-duration': `${duration}s`,
@@ -46,7 +46,7 @@ export function BorderBeam({
             from var(--beam-angle),
             transparent 0%,
             transparent 70%,
-            var(--beam-color, oklch(0.65 0.25 270)) 85%,
+            var(--beam-color, #6366f1) 85%,
             transparent 100%
           );
           -webkit-mask:

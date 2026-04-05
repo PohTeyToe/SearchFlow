@@ -13,7 +13,7 @@ export function TextShimmer({
 }: TextShimmerProps) {
   const style: CSSProperties = {
     backgroundImage:
-      'linear-gradient(110deg, var(--text-primary) 35%, oklch(1 0 0 / 0.6) 50%, var(--text-primary) 65%)',
+      'linear-gradient(110deg, var(--text-primary) 35%, rgba(255, 255, 255, 0.6) 50%, var(--text-primary) 65%)',
     backgroundSize: '200% 100%',
     WebkitBackgroundClip: 'text',
     backgroundClip: 'text',

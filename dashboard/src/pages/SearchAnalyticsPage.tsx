@@ -98,7 +98,7 @@ export const SearchAnalyticsPage: React.FC = () => {
                                 <AnimatedFunnel
                                     steps={[
                                         { label: 'Searches', value: totalSearches, color: 'var(--accent)' },
-                                        { label: 'Clicks', value: totalClicks, color: 'var(--chart-4, oklch(0.65 0.15 290))' },
+                                        { label: 'Clicks', value: totalClicks, color: 'var(--chart-4, #a855f7)' },
                                         { label: 'Conversions', value: totalConversions, color: 'var(--success)' },
                                     ]}
                                 />
