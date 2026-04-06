@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -15,7 +16,12 @@ export const SettingsPage: React.FC = () => {
             title="Settings"
             subtitle="Configure your dashboard preferences"
         >
-            <div className="max-w-2xl space-y-6">
+            <motion.div
+                className="max-w-2xl space-y-6"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.05, 0.7, 0.1, 1] }}
+            >
                 {/* Appearance */}
                 <Card>
                     <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Appearance</h3>
@@ -117,7 +123,7 @@ export const SettingsPage: React.FC = () => {
                         </p>
                     </div>
                 </Card>
-            </div>
+            </motion.div>
         </MainLayout>
     );
 };

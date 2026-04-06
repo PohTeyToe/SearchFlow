@@ -18,12 +18,13 @@ export function TextShimmer({
     WebkitBackgroundClip: 'text',
     backgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
+    color: 'transparent',
     animation: 'shimmer 2s linear infinite',
   };
 
   return (
     <>
-      <Tag className={`text-shimmer ${className}`} style={style}>
+      <Tag className={`text-shimmer [&_*]:!text-inherit [&_*]:![color:inherit] [&_*]:![-webkit-text-fill-color:transparent] ${className}`} style={style}>
         {children}
       </Tag>
       <style>{`

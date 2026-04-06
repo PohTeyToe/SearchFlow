@@ -5,60 +5,110 @@ import { sleep } from '../utils';
 // Simulated delay for API calls
 const API_DELAY = 300;
 
-// Mock DAGs based on actual SearchFlow project
-const mockDags: DAG[] = [
-    {
-        dagId: 'searchflow_ingestion',
-        description: 'Ingests raw events from JSONL files to DuckDB',
-        isPaused: false,
-        schedule: '0 * * * *',
-        tags: ['ingestion', 'duckdb'],
-        lastRun: {
+// --- Time-based helpers for dynamic data ---
+
+/** Returns a multiplier (0.4 to 1.0) based on the current hour to simulate business-hour traffic */
+function timeOfDayMultiplier(): number {
+    const hour = new Date().getHours();
+    // Peak hours: 9-17, trough: 0-6
+    if (hour >= 9 && hour <= 17) return 0.85 + Math.sin((hour - 9) * Math.PI / 8) * 0.15;
+    if (hour >= 18 && hour <= 22) return 0.6 + (22 - hour) * 0.05;
+    return 0.4 + hour * 0.03; // late night / early morning
+}
+
+/** Deterministic micro-noise based on a seed and the current ~3-second window */
+function microNoise(seed: number, amplitude: number): number {
+    const window = Math.floor(Date.now() / 3000); // changes every 3 seconds
+    const s = ((seed * 16807 + window * 31) % 2147483647) / 2147483647;
+    return (s - 0.5) * 2 * amplitude; // range: [-amplitude, +amplitude]
+}
+
+/** Deterministic drift (±pct%) for a value, changing every ~3 seconds */
+function driftValue(base: number, seed: number, pct: number = 0.03): number {
+    return Math.round(base * (1 + microNoise(seed, pct)));
+}
+
+// Mock DAGs — now generated dynamically so pipeline statuses rotate over time
+function generateDags(): DAG[] {
+    const now = Date.now();
+    const seconds = Math.floor(now / 1000);
+
+    // Reverse ETL cycles between 'running' and 'success' every 30 seconds
+    const reverseEtlCycle = Math.floor(seconds / 30) % 2;
+    const reverseEtlState: 'running' | 'success' = reverseEtlCycle === 0 ? 'running' : 'success';
+    const reverseEtlStart = reverseEtlState === 'running'
+        ? new Date(now - (seconds % 30) * 1000).toISOString()
+        : new Date(now - 45000).toISOString();
+    const reverseEtlEnd = reverseEtlState === 'success'
+        ? new Date(now - 15000).toISOString()
+        : undefined;
+
+    // Ingestion shows as 'running' for ~15s every ~2 minutes
+    const ingestionCycle = seconds % 120;
+    const ingestionState: 'running' | 'success' = ingestionCycle < 15 ? 'running' : 'success';
+    const ingestionStart = ingestionState === 'running'
+        ? new Date(now - ingestionCycle * 1000).toISOString()
+        : new Date(now - Math.floor(seconds % 3600) * 1000).toISOString();
+    const ingestionEnd = ingestionState === 'success'
+        ? new Date(now - Math.max(30000, (ingestionCycle - 15) * 1000)).toISOString()
+        : undefined;
+
+    return [
+        {
             dagId: 'searchflow_ingestion',
-            runId: 'run_20240131_1200',
-            state: 'success',
-            startDate: new Date(Date.now() - 3600000).toISOString(),
-            endDate: new Date(Date.now() - 3570000).toISOString(),
-            duration: 30,
+            description: 'Ingests raw events from JSONL files to DuckDB',
+            isPaused: false,
+            schedule: '0 * * * *',
+            tags: ['ingestion', 'duckdb'],
+            lastRun: {
+                dagId: 'searchflow_ingestion',
+                runId: `run_ingestion_${Math.floor(seconds / 120)}`,
+                state: ingestionState,
+                startDate: ingestionStart,
+                endDate: ingestionEnd,
+                duration: ingestionState === 'running' ? ingestionCycle : 30,
+            },
         },
-    },
-    {
-        dagId: 'searchflow_transformation',
-        description: 'Runs dbt models: staging → intermediate → marts',
-        isPaused: false,
-        schedule: '15 * * * *',
-        tags: ['dbt', 'transformation'],
-        lastRun: {
+        {
             dagId: 'searchflow_transformation',
-            runId: 'run_20240131_1215',
-            state: 'success',
-            startDate: new Date(Date.now() - 3300000).toISOString(),
-            endDate: new Date(Date.now() - 3266000).toISOString(),
-            duration: 34,
+            description: 'Runs dbt models: staging → intermediate → marts',
+            isPaused: false,
+            schedule: '15 * * * *',
+            tags: ['dbt', 'transformation'],
+            lastRun: {
+                dagId: 'searchflow_transformation',
+                runId: `run_transform_${Math.floor(seconds / 3600)}`,
+                state: 'success',
+                startDate: new Date(now - Math.floor(seconds % 3600) * 1000 - 34000).toISOString(),
+                endDate: new Date(now - Math.floor(seconds % 3600) * 1000).toISOString(),
+                duration: 34,
+            },
         },
-    },
-    {
-        dagId: 'searchflow_reverse_etl',
-        description: 'Syncs data marts to Redis and Postgres',
-        isPaused: false,
-        schedule: '30 * * * *',
-        tags: ['reverse-etl', 'sync'],
-        lastRun: {
+        {
             dagId: 'searchflow_reverse_etl',
-            runId: 'run_20240131_1230',
-            state: 'running',
-            startDate: new Date(Date.now() - 60000).toISOString(),
-            duration: 3,
+            description: 'Syncs data marts to Redis and Postgres',
+            isPaused: false,
+            schedule: '30 * * * *',
+            tags: ['reverse-etl', 'sync'],
+            lastRun: {
+                dagId: 'searchflow_reverse_etl',
+                runId: `run_retl_${Math.floor(seconds / 60)}`,
+                state: reverseEtlState,
+                startDate: reverseEtlStart,
+                endDate: reverseEtlEnd,
+                duration: reverseEtlState === 'running' ? (seconds % 30) : 30,
+            },
         },
-    },
-];
+    ];
+}
 
 // Generate mock run history
 function generateMockRuns(): DAGRun[] {
     const runs: DAGRun[] = [];
     const states: ('success' | 'failed')[] = ['success', 'success', 'success', 'success', 'failed'];
+    const dags = generateDags();
 
-    mockDags.forEach(dag => {
+    dags.forEach(dag => {
         for (let i = 0; i < 24; i++) {
             const startDate = new Date(Date.now() - (i + 1) * 3600000);
             const state = states[Math.floor(Math.random() * states.length)];
@@ -101,19 +151,40 @@ const mockQualityMetrics: DataQualityMetric[] = [
     })),
 ];
 
-// Mock record counts
-const mockRecordCounts: RecordCount[] = [
-    { table: 'raw_search_events', count: 6547, previousCount: 6102, delta: 445, deltaPercent: 7.3, updatedAt: new Date().toISOString() },
-    { table: 'raw_click_events', count: 2891, previousCount: 2654, delta: 237, deltaPercent: 8.9, updatedAt: new Date().toISOString() },
-    { table: 'raw_conversions', count: 1358, previousCount: 1287, delta: 71, deltaPercent: 5.5, updatedAt: new Date().toISOString() },
-    { table: 'stg_search_events', count: 6547, previousCount: 6102, delta: 445, deltaPercent: 7.3, updatedAt: new Date().toISOString() },
-    { table: 'stg_click_events', count: 2891, previousCount: 2654, delta: 237, deltaPercent: 8.9, updatedAt: new Date().toISOString() },
-    { table: 'stg_conversions', count: 1358, previousCount: 1287, delta: 71, deltaPercent: 5.5, updatedAt: new Date().toISOString() },
-    { table: 'dim_users', count: 1607, previousCount: 1523, delta: 84, deltaPercent: 5.5, updatedAt: new Date().toISOString() },
-    { table: 'fct_search_funnel', count: 170, previousCount: 158, delta: 12, deltaPercent: 7.6, updatedAt: new Date().toISOString() },
-    { table: 'mart_user_segments', count: 1607, previousCount: 1523, delta: 84, deltaPercent: 5.5, updatedAt: new Date().toISOString() },
-    { table: 'mart_recommendations', count: 67, previousCount: 62, delta: 5, deltaPercent: 8.1, updatedAt: new Date().toISOString() },
-];
+// Mock record counts — grow slowly over time based on minutes since midnight
+function generateRecordCounts(): RecordCount[] {
+    const now = new Date();
+    const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+
+    // Each table has a base count + growth rate (records per minute)
+    const tables: { table: string; base: number; prevBase: number; rate: number }[] = [
+        { table: 'raw_search_events', base: 6547, prevBase: 6102, rate: 0.45 },
+        { table: 'raw_click_events', base: 2891, prevBase: 2654, rate: 0.20 },
+        { table: 'raw_conversions', base: 1358, prevBase: 1287, rate: 0.08 },
+        { table: 'stg_search_events', base: 6547, prevBase: 6102, rate: 0.45 },
+        { table: 'stg_click_events', base: 2891, prevBase: 2654, rate: 0.20 },
+        { table: 'stg_conversions', base: 1358, prevBase: 1287, rate: 0.08 },
+        { table: 'dim_users', base: 1607, prevBase: 1523, rate: 0.05 },
+        { table: 'fct_search_funnel', base: 170, prevBase: 158, rate: 0.02 },
+        { table: 'mart_user_segments', base: 1607, prevBase: 1523, rate: 0.05 },
+        { table: 'mart_recommendations', base: 67, prevBase: 62, rate: 0.01 },
+    ];
+
+    return tables.map(({ table, base, prevBase, rate }, idx) => {
+        const growth = Math.floor(minutesSinceMidnight * rate);
+        const count = base + growth;
+        const delta = count - prevBase;
+        const deltaPercent = Math.round((delta / prevBase) * 1000) / 10;
+        return {
+            table,
+            count: driftValue(count, idx + 500, 0.005),
+            previousCount: prevBase,
+            delta,
+            deltaPercent,
+            updatedAt: now.toISOString(),
+        };
+    });
+}
 
 // Mock pipeline metrics
 const mockPipelineMetrics: PipelineMetrics = {
@@ -124,22 +195,33 @@ const mockPipelineMetrics: PipelineMetrics = {
     lastRunTime: new Date(Date.now() - 60000).toISOString(),
 };
 
-// Generate search funnel data for last 7 days
+// Generate search funnel data for last 7 days with time-of-day patterns and micro-drift
 function generateFunnelData(): SearchFunnelData[] {
     const data: SearchFunnelData[] = [];
+    const todMultiplier = timeOfDayMultiplier();
+
     for (let i = 6; i >= 0; i--) {
         const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        const searches = Math.floor(Math.random() * 500) + 800;
-        const clicks = Math.floor(searches * (0.25 + Math.random() * 0.15));
-        const conversions = Math.floor(clicks * (0.08 + Math.random() * 0.08));
+        const daySeed = date.getDate() * 1000 + date.getMonth();
+
+        // Base values seeded by day for consistency, but today gets time-of-day modulation
+        const rng = seededRandom(daySeed);
+        const baseSearches = Math.floor(rng() * 500) + 800;
+        const dayMultiplier = i === 0 ? todMultiplier : (0.7 + rng() * 0.3);
+        const searches = driftValue(Math.floor(baseSearches * dayMultiplier), daySeed + 1);
+
+        const clickRatio = 0.25 + (rng() * 0.15);
+        const clicks = driftValue(Math.floor(searches * clickRatio), daySeed + 2);
+        const convRatio = 0.08 + (rng() * 0.08);
+        const conversions = driftValue(Math.floor(clicks * convRatio), daySeed + 3);
 
         data.push({
             date: date.toISOString().split('T')[0],
             searches,
             clicks,
             conversions,
-            clickThroughRate: (clicks / searches) * 100,
-            conversionRate: (conversions / searches) * 100,
+            clickThroughRate: Math.round((clicks / searches) * 10000) / 100,
+            conversionRate: Math.round((conversions / searches) * 10000) / 100,
         });
     }
     return data;
@@ -238,7 +320,10 @@ function generateMockUsers(): User[] {
     for (const { segment, churnRange, count } of segments) {
         for (let i = 0; i < count; i++) {
             const rng = seededRandom(id * 37);
-            const probability = Math.round((churnRange[0] + rng() * (churnRange[1] - churnRange[0])) * 100) / 100;
+            const baseProbability = Math.round((churnRange[0] + rng() * (churnRange[1] - churnRange[0])) * 100) / 100;
+            // Add micro-fluctuation: ±0.01, deterministic within a ~5-second window
+            const noise = microNoise(id, 0.01);
+            const probability = Math.round(Math.max(0, Math.min(1, baseProbability + noise)) * 100) / 100;
             const riskLevel = probability < 0.3 ? 'low' : probability < 0.7 ? 'medium' : 'high';
             const shapValues = generateShapValues(probability, id, segment);
             const daysAgo = Math.floor(rng() * 30) + 1;
@@ -261,7 +346,14 @@ function generateMockUsers(): User[] {
     return users;
 }
 
-const mockUsers = generateMockUsers();
+// Users are regenerated on each call to getUsers() for live churn fluctuation
+// Keep a cached version for chat lookups (stable within a session)
+let cachedUsers: User[] | null = null;
+function getMockUsers(): User[] {
+    cachedUsers = generateMockUsers();
+    return cachedUsers;
+}
+const mockUsers = generateMockUsers(); // initial for chat responses
 
 const TRAVEL_QUERIES = [
     'flights to cancun', 'tokyo hotels march', 'cheap flights europe',
@@ -384,6 +476,61 @@ function generateUserProfile(userId: string): UserProfile | null {
     };
 }
 
+// --- Live realtime events ---
+const REALTIME_USER_IDS = [
+    'user_1001', 'user_1004', 'user_1008', 'user_1012', 'user_1017',
+    'user_1021', 'user_1025', 'user_1003', 'user_1015', 'user_1029',
+];
+const REALTIME_QUERIES = [
+    'flights to cancun', 'tokyo hotels march', 'cheap flights europe',
+    'bali resorts all inclusive', 'paris weekend deals', 'caribbean cruise 2024',
+    'ski resorts colorado', 'beach vacation under 1000', 'last minute flights',
+    'hawaii honeymoon packages', 'rome airbnb center', 'nyc to london direct',
+];
+const REALTIME_DESTINATIONS = [
+    'Cancun resort listing', 'Tokyo flight details', 'Barcelona hotel page',
+    'Bali villa deal', 'Lisbon Airbnb listing', 'cruise itinerary details',
+    'Reykjavik tour package', 'Santorini sunset villa', 'Banff ski lodge',
+];
+
+function generateRealtimeEvents(): { type: string; message: string; timestamp: string }[] {
+    const now = Date.now();
+    const secondSlot = Math.floor(now / 5000); // changes every 5 seconds
+    const eventCount = 1 + (secondSlot % 3); // 1-3 events
+
+    const events: { type: string; message: string; timestamp: string }[] = [];
+    for (let i = 0; i < eventCount; i++) {
+        const seed = secondSlot * 7 + i * 13;
+        const userIdx = ((seed * 16807) % 2147483647) % REALTIME_USER_IDS.length;
+        const userId = REALTIME_USER_IDS[userIdx];
+        const eventType = seed % 3; // 0=search, 1=click, 2=abandon
+        const secsAgo = (i + 1) * 3 + (seed % 8);
+
+        let type: string;
+        let message: string;
+        if (eventType === 0) {
+            const qIdx = ((seed * 31) % 2147483647) % REALTIME_QUERIES.length;
+            type = 'search';
+            message = `${userId} searched for "${REALTIME_QUERIES[qIdx]}"`;
+        } else if (eventType === 1) {
+            const dIdx = ((seed * 31) % 2147483647) % REALTIME_DESTINATIONS.length;
+            type = 'click';
+            message = `${userId} clicked ${REALTIME_DESTINATIONS[dIdx]}`;
+        } else {
+            type = 'abandonment';
+            message = `${userId} abandoned search`;
+        }
+
+        events.push({
+            type,
+            message,
+            timestamp: new Date(now - secsAgo * 1000).toISOString(),
+        });
+    }
+
+    return events;
+}
+
 // Mock chat responses
 function getMockChatResponse(question: string): { answer: string; toolsUsed: string[] } {
     const q = question.toLowerCase();
@@ -440,7 +587,7 @@ function getMockChatResponse(question: string): { answer: string; toolsUsed: str
 export const mockApi = {
     async getDags(): Promise<DAG[]> {
         await sleep(API_DELAY);
-        return mockDags;
+        return generateDags();
     },
 
     async getDagRuns(dagId?: string): Promise<DAGRun[]> {
@@ -456,7 +603,7 @@ export const mockApi = {
 
     async getRecordCounts(): Promise<RecordCount[]> {
         await sleep(API_DELAY);
-        return mockRecordCounts;
+        return generateRecordCounts();
     },
 
     async getPipelineMetrics(): Promise<PipelineMetrics> {
@@ -489,7 +636,7 @@ export const mockApi = {
 
     async getUsers(): Promise<User[]> {
         await sleep(API_DELAY);
-        return mockUsers;
+        return getMockUsers();
     },
 
     async getUserProfile(userId: string): Promise<UserProfile | null> {
@@ -515,6 +662,11 @@ export const mockApi = {
         }
         await sleep(800);
         return getMockChatResponse(question);
+    },
+
+    async getRealtimeEvents(): Promise<{ type: string; message: string; timestamp: string }[]> {
+        await sleep(100);
+        return generateRealtimeEvents();
     },
 
     async getRawLargeDataset(): Promise<{ timestamp: number; value: number; type: 'search' | 'booking' | 'error' }[]> {

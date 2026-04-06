@@ -1,6 +1,6 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Card, CardHeader, CardContent } from '../ui/Card';
-import { ScrollReveal } from '../motion/ScrollReveal';
 import { formatRelativeTime } from '../../utils';
 import type { ActivityEvent } from '../../types';
 
@@ -40,7 +40,16 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ events }) =>
 
                     <div className="space-y-4">
                         {events.map((event, i) => (
-                            <ScrollReveal key={i} delay={i * 0.04} direction="left">
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, x: -12 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{
+                                    delay: i * 0.04,
+                                    duration: 0.4,
+                                    ease: [0.05, 0.7, 0.1, 1],
+                                }}
+                            >
                                 <div className="relative flex items-start gap-3">
                                     {/* Dot */}
                                     <div
@@ -70,7 +79,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ events }) =>
                                         </p>
                                     </div>
                                 </div>
-                            </ScrollReveal>
+                            </motion.div>
                         ))}
                     </div>
                 </div>

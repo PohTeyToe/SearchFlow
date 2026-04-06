@@ -75,10 +75,12 @@ export const SearchAnalyticsPage: React.FC = () => {
                     >
                         <ScrollReveal>
                             <div
-                                className="rounded-2xl p-8"
+                                className="rounded-2xl p-8 noise-overlay"
                                 style={{
-                                    backgroundColor: 'var(--bg-card)',
+                                    background: 'rgba(26, 26, 26, 0.6)',
+                                    backdropFilter: 'blur(16px)',
                                     border: '1px solid var(--border-subtle)',
+                                    minHeight: 520,
                                 }}
                             >
                                 <div className="flex items-center gap-3 mb-2">
@@ -92,9 +94,64 @@ export const SearchAnalyticsPage: React.FC = () => {
                                         Booking Funnel
                                     </h2>
                                 </div>
-                                <p className="text-xs mb-8" style={{ color: 'var(--text-muted)' }}>
+                                <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>
                                     Search to Book conversion -- last 7 days
                                 </p>
+
+                                {/* Summary stats */}
+                                <div className="grid grid-cols-3 gap-4 mb-10">
+                                    <div
+                                        className="rounded-xl p-4 text-center"
+                                        style={{
+                                            backgroundColor: 'var(--bg-card-hover)',
+                                            border: '1px solid var(--border-subtle)',
+                                        }}
+                                    >
+                                        <AnimatedNumber
+                                            value={totalSearches}
+                                            className="text-2xl font-bold tabular-nums block"
+                                            duration={1.2}
+                                        />
+                                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                                            Total Searches
+                                        </p>
+                                    </div>
+                                    <div
+                                        className="rounded-xl p-4 text-center"
+                                        style={{
+                                            backgroundColor: 'var(--bg-card-hover)',
+                                            border: '1px solid var(--border-subtle)',
+                                        }}
+                                    >
+                                        <AnimatedNumber
+                                            value={totalSearches > 0 ? (totalClicks / totalSearches) * 100 : 0}
+                                            format={(n) => `${n.toFixed(1)}%`}
+                                            className="text-2xl font-bold tabular-nums block"
+                                            duration={1.2}
+                                        />
+                                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                                            Click-Through Rate
+                                        </p>
+                                    </div>
+                                    <div
+                                        className="rounded-xl p-4 text-center"
+                                        style={{
+                                            backgroundColor: 'var(--bg-card-hover)',
+                                            border: '1px solid var(--border-subtle)',
+                                        }}
+                                    >
+                                        <AnimatedNumber
+                                            value={totalSearches > 0 ? (totalConversions / totalSearches) * 100 : 0}
+                                            format={(n) => `${n.toFixed(1)}%`}
+                                            className="text-2xl font-bold tabular-nums block"
+                                            duration={1.2}
+                                        />
+                                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                                            Conversion Rate
+                                        </p>
+                                    </div>
+                                </div>
+
                                 <AnimatedFunnel
                                     steps={[
                                         { label: 'Searches', value: totalSearches, color: 'var(--accent)' },

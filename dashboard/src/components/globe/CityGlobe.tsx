@@ -95,6 +95,8 @@ export default function CityGlobe({ size = 500, className }: CityGlobeProps) {
     >
       <canvas
         ref={canvasRef}
+        width={size * 2}
+        height={size * 2}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -102,7 +104,6 @@ export default function CityGlobe({ size = 500, className }: CityGlobeProps) {
         style={{
           width: '100%',
           height: '100%',
-          contain: 'layout paint size',
           cursor: 'grab',
         }}
       />
