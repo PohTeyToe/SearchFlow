@@ -90,7 +90,7 @@ export const CommandPalette: React.FC = () => {
                         transition={{ duration: 0.15, ease: 'easeOut' }}
                     >
                         <div
-                            className="w-full max-w-[640px] mx-4 overflow-hidden"
+                            className="w-full max-w-full sm:max-w-[640px] mx-2 sm:mx-4 overflow-hidden"
                             style={{
                                 background: 'rgba(26, 26, 26, 0.8)',
                                 backdropFilter: 'blur(20px)',

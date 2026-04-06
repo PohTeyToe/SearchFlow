@@ -11,6 +11,7 @@ import { StaggerContainer, staggerItem } from '../components/motion/StaggerConta
 import { ScrollReveal } from '../components/motion/ScrollReveal';
 import { AnimatedFunnel } from '../components/charts/AnimatedFunnel';
 import { AnimatedSparkline } from '../components/charts/AnimatedSparkline';
+import { LiveEventsFeed } from '../components/dashboard/LiveEventsFeed';
 import CityGlobe from '../components/globe/CityGlobe';
 import { Badge } from '../components/ui';
 import { ChurnBadge } from '../components/users/ChurnBadge';
@@ -246,6 +247,15 @@ export const DashboardPage: React.FC = () => {
             </section>
 
             {/* ═══════════════════════════════════════════
+                LIVE EVENTS FEED
+            ═══════════════════════════════════════════ */}
+            <section className="px-6 py-8 max-w-5xl mx-auto">
+                <ScrollReveal>
+                    <LiveEventsFeed />
+                </ScrollReveal>
+            </section>
+
+            {/* ═══════════════════════════════════════════
                 SECTION 3 — GLOBE: SEARCH ORIGINS
             ═══════════════════════════════════════════ */}
             <section className="px-6 py-16 max-w-5xl mx-auto">
@@ -288,7 +298,7 @@ export const DashboardPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="flex-shrink-0">
+                        <div className="flex-shrink-0 hidden lg:block">
                             <CityGlobe size={380} />
                         </div>
                     </div>

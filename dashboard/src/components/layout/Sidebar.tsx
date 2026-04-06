@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useThemeStore } from '../../stores';
@@ -14,6 +14,7 @@ import {
     Sparkles,
 } from 'lucide-react';
 import { useAssistantStore } from '../../stores/assistantStore';
+import { useMediaQuery } from '../../hooks/useCustomHooks';
 
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -25,8 +26,16 @@ const navItems = [
 ];
 
 export const Sidebar: React.FC = () => {
-    const { sidebarCollapsed, toggleSidebar } = useThemeStore();
+    const { sidebarCollapsed, toggleSidebar, setSidebarCollapsed } = useThemeStore();
     const { toggleCommand } = useAssistantStore();
+    const isNarrow = useMediaQuery('(max-width: 1024px)');
+
+    // Auto-collapse on narrow viewports
+    useEffect(() => {
+        if (isNarrow && !sidebarCollapsed) {
+            setSidebarCollapsed(true);
+        }
+    }, [isNarrow, sidebarCollapsed, setSidebarCollapsed]);
 
     return (
         <motion.aside

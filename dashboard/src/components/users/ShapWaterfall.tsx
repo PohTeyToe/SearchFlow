@@ -62,7 +62,7 @@ export const ShapWaterfall: React.FC<ShapWaterfallProps> = ({
                             return (
                                 <div key={sv.feature} className="flex items-center gap-3 h-9">
                                     {/* Label column */}
-                                    <div className="w-44 flex-shrink-0 text-right pr-2">
+                                    <div className="w-28 md:w-44 flex-shrink-0 text-right pr-2">
                                         <span className="text-sm text-[var(--text-secondary)]">
                                             {sv.featureLabel}
                                         </span>
