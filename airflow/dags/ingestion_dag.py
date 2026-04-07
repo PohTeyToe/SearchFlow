@@ -20,6 +20,7 @@ default_args = {
     'email_on_retry': False,
     'retries': 3,
     'retry_delay': timedelta(minutes=2),
+    'sla': timedelta(minutes=5),
 }
 
 

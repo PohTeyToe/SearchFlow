@@ -28,8 +28,14 @@ prometheus-fastapi-instrumentator>=7.0.0
 # Rate Limiting
 slowapi>=0.1.9
 
+# ML Monitoring
+evidently>=0.4.0
+
 # Experiment Tracking
 mlflow>=3.10.0
+
+# Structured Logging
+structlog>=24.1.0
 
 # Utilities
 python-dotenv>=1.0.0

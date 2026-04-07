@@ -14,6 +14,10 @@ x-airflow-common: &airflow-common
     REDIS_HOST: redis
     POSTGRES_HOST: postgres
     MLFLOW_TRACKING_URI: http://mlflow:5000
+    AIRFLOW__METRICS__STATSD_ON: 'true'
+    AIRFLOW__METRICS__STATSD_HOST: statsd-exporter
+    AIRFLOW__METRICS__STATSD_PORT: '9125'
+    AIRFLOW__METRICS__STATSD_PREFIX: airflow
   volumes:
     - ./airflow/dags:/opt/airflow/dags
     - ./airflow/plugins:/opt/airflow/plugins
@@ -357,6 +361,111 @@ services:
     networks:
       - searchflow-network
 
+  # ============================================
+  # OBSERVABILITY STACK
+  # ============================================
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: searchflow-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - searchflow-network
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: searchflow-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - searchflow-network
+
+  loki:
+    image: grafana/loki:3.3.0
+    container_name: searchflow-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - searchflow-network
+
+  statsd-exporter:
+    image: prom/statsd-exporter:v0.27.1
+    container_name: searchflow-statsd-exporter
+    ports:
+      - "9125:9125/udp"
+      - "9102:9102"
+    restart: unless-stopped
+    networks:
+      - searchflow-network
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    container_name: searchflow-kafka-exporter
+    ports:
+      - "9308:9308"
+    command:
+      - '--kafka.server=kafka:9092'
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - searchflow-network
+
+  promtail:
+    image: grafana/promtail:3.3.0
+    container_name: searchflow-promtail
+    volumes:
+      - ./monitoring/promtail/config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - searchflow-network
+
 # ============================================
 # VOLUMES & NETWORKS
 # ============================================
@@ -365,6 +474,9 @@ volumes:
   postgres-data:
   redis-data:
   kafka-data:
+  prometheus-data:
+  grafana-data:
+  loki-data:
 
 networks:
   searchflow-network:

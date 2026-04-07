@@ -18,6 +18,7 @@ default_args = {
     'email_on_failure': False,
     'retries': 2,
     'retry_delay': timedelta(minutes=2),
+    'sla': timedelta(minutes=10),
 }
 
 # dbt command prefix

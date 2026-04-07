@@ -1,5 +1,6 @@
 """Tests for the FastAPI ML inference API endpoints."""
 
+import os
 import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -238,3 +239,36 @@ class TestEdgeCases:
         # manually raised errors.  Test a 405 by using wrong method on /health.
         resp = client.post("/health")
         assert resp.status_code == 405
+
+
+# ------------------------------------------------------------------
+# Monitoring endpoints
+# ------------------------------------------------------------------
+
+
+class TestMonitoringEndpoints:
+    def test_drift_endpoint_returns_json(self, client: TestClient) -> None:
+        resp = client.get("/monitor/drift")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "drift_detected" in data
+        assert "drift_score" in data
+
+    def test_drift_endpoint_default_response(self, client: TestClient) -> None:
+        resp = client.get("/monitor/drift")
+        data = resp.json()
+        assert data["drift_detected"] is False
+        assert data["drift_score"] == 0.0
+
+    def test_performance_endpoint_returns_list(self, client: TestClient) -> None:
+        # Mock mlflow to avoid connection timeout in tests
+        mock_mlflow = MagicMock()
+        mock_mlflow.tracking.MlflowClient.return_value.get_experiment_by_name.return_value = None
+        with patch.dict("sys.modules", {"mlflow": mock_mlflow, "mlflow.tracking": mock_mlflow.tracking}):
+            resp = client.get("/monitor/performance")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    def test_drift_report_404_when_missing(self, client: TestClient) -> None:
+        resp = client.get("/monitor/drift/report")
+        assert resp.status_code == 404

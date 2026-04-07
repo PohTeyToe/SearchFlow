@@ -135,3 +135,24 @@ class ErrorDetail(BaseModel):
 class ErrorResponse(BaseModel):
     """Wrapper for error responses, used for OpenAPI docs."""
     error: ErrorDetail
+
+
+# ============================================
+# Monitoring
+# ============================================
+
+class DriftStatusResponse(BaseModel):
+    """Latest drift check status."""
+    drift_detected: bool = False
+    drift_score: float = 0.0
+    per_feature: Optional[Dict] = None
+    last_checked: Optional[str] = None
+
+
+class PerformanceRecord(BaseModel):
+    """Single model performance record from MLflow."""
+    run_id: str
+    timestamp: str
+    auc: Optional[float] = None
+    accuracy: Optional[float] = None
+    f1: Optional[float] = None

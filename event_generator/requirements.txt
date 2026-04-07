@@ -13,5 +13,8 @@ confluent-kafka>=2.13.0
 # CLI
 click>=8.1.0
 
+# Structured Logging
+structlog>=24.1.0
+
 # Utilities
 python-dotenv>=1.0.0

@@ -38,6 +38,7 @@ from api.schemas import (
     SentimentRequest, SentimentResponse, BatchSentimentRequest, BatchSentimentResponse,
     ChurnRequest, ChurnResponse, ChurnFactor, RiskLevel,
     HealthResponse, SentimentLabel, ErrorDetail, ErrorResponse,
+    DriftStatusResponse, PerformanceRecord,
 )
 
 # Configure logging
@@ -548,6 +549,81 @@ async def get_model_metrics():
                 logger.warning("Failed to load %s metrics from %s: %s", name, filepath, exc)
 
     return metrics
+
+
+# ============================================
+# Monitoring Endpoints
+# ============================================
+
+DRIFT_REPORT_DIR = os.getenv("DRIFT_REPORT_DIR", "reports/drift")
+
+
+@app.get("/monitor/drift", response_model=DriftStatusResponse)
+async def get_drift_status():
+    """Get latest drift check results."""
+    result_path = os.path.join(DRIFT_REPORT_DIR, "latest_result.json")
+    if os.path.exists(result_path):
+        try:
+            with open(result_path, "r") as f:
+                data = json.load(f)
+            return DriftStatusResponse(
+                drift_detected=data.get("drift_detected", False),
+                drift_score=data.get("drift_score", 0.0),
+                per_feature=data.get("per_feature"),
+                last_checked=data.get("timestamp"),
+            )
+        except (json.JSONDecodeError, OSError):
+            pass
+    return DriftStatusResponse()
+
+
+@app.get("/monitor/performance", response_model=list[PerformanceRecord])
+async def get_performance_history():
+    """Get model performance history from MLflow."""
+    try:
+        import mlflow
+
+        tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
+        os.environ["MLFLOW_HTTP_REQUEST_TIMEOUT"] = "5"
+        mlflow.set_tracking_uri(tracking_uri)
+        client = mlflow.tracking.MlflowClient()
+
+        experiment = client.get_experiment_by_name("churn-prediction")
+        if not experiment:
+            return []
+
+        runs = client.search_runs(
+            experiment_ids=[experiment.experiment_id],
+            order_by=["start_time DESC"],
+            max_results=20,
+        )
+
+        records = []
+        for run in runs:
+            metrics = run.data.metrics
+            records.append(PerformanceRecord(
+                run_id=run.info.run_id,
+                timestamp=str(run.info.start_time),
+                auc=metrics.get("auc"),
+                accuracy=metrics.get("accuracy"),
+                f1=metrics.get("f1"),
+            ))
+        return records
+    except Exception:
+        return []
+
+
+@app.get("/monitor/drift/report")
+async def get_drift_report():
+    """Get latest Evidently HTML drift report."""
+    report_path = os.path.join(DRIFT_REPORT_DIR, "latest_drift_report.html")
+    if not os.path.exists(report_path):
+        raise HTTPException(
+            status_code=404,
+            detail="No drift report available. Run drift check first.",
+        )
+    from fastapi.responses import FileResponse
+    return FileResponse(report_path, media_type="text/html")
 
 
 if __name__ == "__main__":
