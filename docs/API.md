@@ -12,7 +12,9 @@ The ML Engine serves predictions over a FastAPI application. Responses are JSON.
 
 ## Authentication
 
-No authentication is required for local development. In production, add an API key header via a reverse proxy or FastAPI middleware.
+Authentication is controlled by the `ML_API_KEY` environment variable. When set, all non-public endpoints require an `X-API-Key` header. When unset (local dev default), authentication is disabled.
+
+Public paths that bypass authentication: `/health`, `/docs`, `/openapi.json`, `/redoc`.
 
 ---
 
@@ -220,25 +222,25 @@ Predicts the probability that a user will churn, with SHAP-based explanations of
 ```json
 {
   "features": {
-    "sessions_7d": 0,
-    "sessions_30d": 2,
-    "sessions_90d": 15,
-    "searches_total": 30,
-    "clicks_total": 12,
-    "conversions_total": 1,
-    "search_to_click_ratio": 0.40,
-    "click_to_conversion_ratio": 0.08,
-    "avg_session_duration_mins": 8.5,
-    "days_since_last_activity": 45,
-    "lifetime_value": 450.00,
-    "unique_destinations_searched": 4,
-    "mobile_session_ratio": 0.60,
-    "weekend_session_ratio": 0.30
+    "lead_time": 120,
+    "total_stay_nights": 5,
+    "adr": 95.0,
+    "is_repeated_guest": 0,
+    "previous_cancellations": 1,
+    "previous_bookings_not_canceled": 0,
+    "booking_changes": 0,
+    "total_of_special_requests": 1,
+    "days_in_waiting_list": 0,
+    "guests_total": 2,
+    "deposit_type_encoded": 0,
+    "market_segment_encoded": 6,
+    "customer_type_encoded": 2,
+    "weekend_stay_ratio": 0.4
   }
 }
 ```
 
-When `features` is omitted, the service fetches user features from the warehouse.
+When `features` is omitted, the service derives deterministic features from a hash of the user_id.
 
 **Response** (`200 OK`):
 
@@ -248,24 +250,9 @@ When `features` is omitted, the service fetches user features from the warehouse
   "churn_probability": 0.72,
   "risk_level": "high",
   "top_factors": [
-    {
-      "feature": "days_since_last_activity",
-      "impact": 0.25,
-      "direction": "increases",
-      "value": 45
-    },
-    {
-      "feature": "sessions_7d",
-      "impact": -0.18,
-      "direction": "decreases",
-      "value": 0
-    },
-    {
-      "feature": "conversions_total",
-      "impact": -0.10,
-      "direction": "decreases",
-      "value": 1
-    }
+    {"feature": "lead_time", "impact": 0.15, "direction": "increases", "value": 120},
+    {"feature": "deposit_type_encoded", "impact": 0.12, "direction": "increases", "value": 1},
+    {"feature": "adr", "impact": -0.08, "direction": "decreases", "value": 85.0}
   ],
   "cached": false
 }
@@ -286,10 +273,10 @@ curl -X POST http://localhost:8000/churn/user_42 \
 ### Performance Metrics
 
 ```
-GET /metrics
+GET /model-metrics
 ```
 
-Returns model performance metrics loaded from the `training_results/` directory.
+Returns model performance metrics. (Renamed from `/metrics` to avoid collision with Prometheus endpoint.)
 
 **Response** (`200 OK`):
 
@@ -316,6 +303,68 @@ Returns model performance metrics loaded from the `training_results/` directory.
   }
 }
 ```
+
+---
+
+### Prometheus Metrics
+
+```
+GET /metrics/prometheus
+```
+
+Returns Prometheus text format metrics including `http_requests_total`, `http_request_duration_seconds`, `http_requests_in_progress`. Auto-instrumented by `prometheus-fastapi-instrumentator`.
+
+---
+
+### Drift Status
+
+```
+GET /monitor/drift
+```
+
+Returns the latest drift check results from Evidently AI.
+
+**Response** (`200 OK`):
+
+```json
+{
+  "drift_detected": false,
+  "drift_score": 0.12,
+  "per_feature": {
+    "lead_time": {"drifted": false, "score": 0.08},
+    "adr": {"drifted": false, "score": 0.11}
+  },
+  "last_checked": "2025-04-01T06:00:00"
+}
+```
+
+---
+
+### Performance History
+
+```
+GET /monitor/performance
+```
+
+Returns model performance history from MLflow (up to 20 most recent training runs).
+
+**Response** (`200 OK`):
+
+```json
+[
+  {"run_id": "abc123", "timestamp": "1711929600000", "auc": 0.871, "accuracy": 0.823, "f1": 0.766}
+]
+```
+
+---
+
+### Drift Report
+
+```
+GET /monitor/drift/report
+```
+
+Returns the latest Evidently HTML drift report. Returns 404 if no report is available.
 
 ---
 

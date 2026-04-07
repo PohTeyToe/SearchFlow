@@ -86,6 +86,7 @@ start --> dbt_deps --> dbt_run_staging --> dbt_run_intermediate --> dbt_run_mart
 | Intermediate | `int_search_sessions`, `int_user_journeys` | View |
 | Marts (analytics) | `fct_search_funnel`, `dim_users` | Table |
 | Marts (marketing) | `mart_user_segments`, `mart_recommendations` | Table |
+| Marts (ML) | `mart_ml_features` | Table |
 
 ### 3. Reverse-ETL DAG (`searchflow_reverse_etl`)
 
@@ -101,6 +102,50 @@ start --> [sync_user_segments, sync_recommendations] --> log_metrics --> end
 ```
 
 Segment and recommendation syncs run in parallel since they write to different destinations.
+
+### 4. Training DAG (`searchflow_training`)
+
+**File**: `airflow/dags/training_dag.py`
+**Schedule**: Weekly on Sundays (`0 0 * * 0`)
+**Max Active Runs**: 1
+
+Orchestrates retraining of all 3 ML models via `docker exec` into the ml-engine container. Each model logs to MLflow.
+
+**Task flow**:
+```
+train_churn → train_sentiment → train_recommender
+```
+
+**SLA**: 30 minutes per task.
+
+### 5. Monitoring DAG (`searchflow_model_monitoring`)
+
+**File**: `airflow/dags/monitoring_dag.py`
+**Schedule**: Daily at 6 AM (`0 6 * * *`)
+
+Runs Evidently drift detection against hotel booking reference data. If drift exceeds threshold (score > 0.3), triggers the training DAG for automatic retraining.
+
+**Task flow**:
+```
+check_drift → evaluate_drift → [trigger_retrain | skip_retrain]
+```
+
+**SLA**: 20 minutes.
+
+---
+
+## Kafka Streaming Pipeline
+
+In addition to file-based ingestion, SearchFlow supports real-time streaming via Apache Kafka 4.0 (KRaft mode — no ZooKeeper).
+
+**Producer**: Event generator publishes to `search_events` topic via `confluent-kafka`.
+**Consumer**: `kafka_consumer/` reads from Kafka, batch-inserts into DuckDB with write-lock retry and exponential backoff.
+
+```
+Event Generator → Kafka (search_events topic) → Kafka Consumer → DuckDB raw tables
+```
+
+**Configuration**: `KAFKA_BOOTSTRAP_SERVERS=kafka:9092`, consumer group `searchflow-consumers`.
 
 ---
 
@@ -165,8 +210,12 @@ dbt tests enforce data quality at every layer:
 - **Referential integrity** between staging tables (e.g., `click.search_event_id` references `stg_search_events`)
 - **Row count thresholds** on mart tables via custom tests
 - **Freshness checks** on raw sources (warn after 1 hour, error after 6 hours)
+- **Unit tests** on transformation logic (12 YAML-based dbt unit tests)
+- **Custom generic tests**: `test_positive_value`, `test_valid_ratio`, `test_referential_integrity`
+- **Model contracts** with `contract: {enforced: true}` on mart models
+- **SLA monitoring** on all DAG tasks (5-30 min thresholds)
 
-Total: 79 dbt tests across all models.
+Total: 71 dbt tests + 12 unit tests + 3 custom generic tests.
 
 ---
 

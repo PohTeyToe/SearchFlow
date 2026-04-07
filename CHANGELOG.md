@@ -2,22 +2,56 @@
 
 All notable changes to SearchFlow are documented in this file.
 
-## [Unreleased] - 2026-03
+## [Unreleased]
+
+## [0.9.0] - 2025-04-02
 
 ### Added
-- Architecture decisions documentation in README
-- ML API troubleshooting guide with common issues and curl examples
-- Edge case test coverage for ML model inference (7 new test cases)
-- Known issues and roadmap section in README
-- Structured error responses with request_id for log tracing
+- Prometheus, Grafana (:3001), Loki, statsd-exporter, kafka-exporter, promtail Docker services (6 new containers)
+- 4 provisioned Grafana dashboards: pipeline-health, ml-serving, kafka-metrics, system-overview
+- Evidently AI drift detection module with 4 simulation scenarios (pandemic, seasonal, geographic, price inflation)
+- Monitoring Airflow DAG with conditional retraining via TriggerDagRunOperator
+- `/monitor/drift`, `/monitor/performance`, `/monitor/drift/report` API endpoints
+- structlog JSON logging configuration for all 4 Python services
+- SLA monitoring (`sla=timedelta()`) on all 5 Airflow DAGs
+- `docs/INCIDENT_RUNBOOK.md` with 5 failure scenario decision trees
+- `docs/INCIDENT_EXAMPLES.md` with 2 postmortem examples
+- `docs/SCALE.md` — scaling analysis for 10M events/day
+- `docs/DECISIONS.md` — 8 architecture decision records
+- `scripts/evaluate_model.py` — CI model evaluation gate (AUC-ROC >= 0.83)
+- `scripts/seed_metrics.py` — populate Grafana dashboards with sample data
+- `scripts/simulate_incident.py` — data quality incident simulation
+- `scripts/simulate_drift.py` — distribution shift simulation with Evidently reports
+- Dashboard drift monitoring panel (DriftMonitor, DriftStatusIndicator, PerformanceChart)
+- Pre-commit hooks: ruff (Python), sqlfluff (SQL), eslint (TypeScript)
+- `.sqlfluff` config with dbt templater and DuckDB dialect
 
 ### Changed
-- Tightened type annotations in event models using TypedDict
-- Upgraded minimum versions for fastapi, uvicorn, and pydantic
-- Improved ML API error handling with specific exception types
+- Consolidated CI workflow from 7 jobs to 5, added model-eval gate
+- Docker Compose: 14 services → 20 services
+- Airflow StatsD metrics emission to statsd-exporter
+- README updated with real model metrics, dataset attribution, Grafana URL
 
-### Fixed
-- Standardized error response format across all ML API endpoints
+## [0.8.0] - 2025-03-27
+
+### Added
+- Hotel Booking Demand dataset integration (119,390 bookings, CC BY 4.0)
+- Churn model rewrite with 14 hotel booking features and XGBoost (AUC-ROC 0.87+)
+- Sentiment and recommender training updated for real datasets
+- Event generator samples from real hotel booking distributions
+- dbt model contracts with `contract: {enforced: true}` on mart models
+- 12 dbt unit tests for transformation logic
+- `mart_ml_features` dbt model computing 14 churn features in SQL
+- 3 custom dbt generic tests (test_positive_value, test_valid_ratio, test_referential_integrity)
+- Kafka 4.0 KRaft streaming pipeline with DuckDB consumer
+- Search assistant LangGraph agent with 5 tools
+- MLflow experiment tracking for all model training
+- Prometheus FastAPI instrumentator on ML Engine
+
+### Changed  
+- Training scripts use MLflow autolog + manual metric/artifact logging
+- dbt source freshness thresholds tightened
+- dbt-duckdb upgraded to 1.8+
 
 ## [0.6.0] - 2026-01-06
 

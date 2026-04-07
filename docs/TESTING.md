@@ -6,42 +6,65 @@ SearchFlow has a multi-layer testing strategy covering data quality, Python unit
 
 | Layer | Tool | Count | Location |
 |-|-|-|-|
-| Data quality | dbt test | 79 tests | `dbt_transform/tests/` and schema YAML |
-| ML unit tests | pytest | 14 tests | `ml_engine/tests/` |
-| Event generator | pytest | 12 tests | `event_generator/tests/` |
-| Reverse-ETL | pytest | 8 tests | `reverse_etl/tests/` |
-| API integration | pytest + httpx | 10 tests | `ml_engine/tests/test_api.py` |
-| Evaluation | pytest | 6 tests | `ml_engine/tests/test_evaluation.py` |
+| ML engine | pytest | 140 | `ml_engine/tests/` |
+| Event generator | pytest | 60 | `event_generator/tests/` |
+| Search assistant | pytest | 37 | `search_assistant/tests/` |
+| Kafka consumer | pytest | 7 | `kafka_consumer/tests/` |
+| Airflow SLA | pytest | 5 | `airflow/tests/` |
+| Documentation | pytest | 6 | `tests/` |
+| Dashboard | vitest | 64 | `dashboard/src/__tests__/` |
+| dbt tests | dbt test | 71 | `dbt_transform/` |
 | Load testing | Locust | -- | `benchmarks/locustfile.py` |
 
 ---
 
 ## Running Tests
 
-### All Python Tests
+### Python Tests
 
 ```bash
-make test
-
-# Or run pytest directly
 cd ml_engine && python -m pytest tests/ -v
 cd event_generator && python -m pytest tests/ -v
-cd reverse_etl && python -m pytest tests/ -v
+cd kafka_consumer && python -m pytest tests/ -v
+cd search_assistant && python -m pytest tests/ -v
+python -m pytest airflow/tests/ -v
+python -m pytest tests/ -v
+```
+
+### Dashboard Tests
+
+```bash
+cd dashboard && npx vitest run
 ```
 
 ### dbt Tests
 
 ```bash
-make dbt-test
+cd dbt_transform && dbt test --profiles-dir .
 ```
 
-### CI Pipeline
+## CI Pipeline
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main`:
+GitHub Actions (`.github/workflows/ci.yml`) runs 5 jobs on every push to `main`:
 
-1. **dbt-compile**: Compiles models, lints SQL with sqlfluff
-2. **python-lint**: Runs ruff on Python source
-3. **python-test**: Runs pytest for all three packages
+1. **lint**: Ruff (Python) + SQLFluff (SQL)
+2. **dbt-build**: dbt deps, build, and test
+3. **python-tests**: All 4 component test suites (ml_engine, event_generator, kafka_consumer, search_assistant)
+4. **model-eval**: Trains churn model from scratch on hotel bookings data, fails if AUC-ROC < 0.83 (depends on python-tests)
+5. **dashboard-tests**: `npm ci && npm test`
+
+### Pre-commit Hooks
+
+Local linting via `.pre-commit-config.yaml`:
+- **ruff**: Python lint + format
+- **sqlfluff**: SQL lint with dbt templater (DuckDB dialect)
+- **eslint**: TypeScript/JSX lint for dashboard
+
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
 
 ---
 
@@ -75,6 +98,6 @@ pytest settings are in `pyproject.toml`:
 
 ```toml
 [tool.pytest.ini_options]
-testpaths = ["event_generator/tests", "ml_engine/tests", "reverse_etl/tests"]
+testpaths = ["ml_engine/tests", "event_generator/tests", "kafka_consumer/tests", "search_assistant/tests", "airflow/tests", "tests"]
 addopts = "-v --tb=short"
 ```

@@ -238,7 +238,7 @@ curl -X POST http://localhost:8000/sentiment \
 curl -X POST http://localhost:8000/churn/user_42
 
 # Model metrics
-curl http://localhost:8000/metrics
+curl http://localhost:8000/model-metrics
 ```
 
 ### Redis cache issues
@@ -251,6 +251,51 @@ docker-compose exec redis redis-cli FLUSHDB
 
 # Check cache TTL for a key
 docker-compose exec redis redis-cli TTL "reco:user_42:10"
+```
+
+---
+
+## Observability Issues
+
+### Grafana shows no data
+
+1. Check Prometheus targets: http://localhost:9090/targets — all should be UP
+2. If ml-engine target is down, verify the container is running: `docker ps | grep ml-engine`
+3. If statsd-exporter target is down, check Airflow StatsD env vars in docker-compose.yml
+4. Dashboards need time to populate — wait 2-3 scrape intervals (30-45 seconds)
+5. Run `python scripts/seed_metrics.py --duration 60` to populate with sample data
+
+### Prometheus not scraping
+
+```bash
+# Check Prometheus config
+docker exec searchflow-prometheus cat /etc/prometheus/prometheus.yml
+
+# Force config reload
+curl -X POST http://localhost:9090/-/reload
+```
+
+### Loki logs not appearing
+
+```bash
+# Check Promtail is running
+docker ps | grep promtail
+
+# Check Loki health
+curl http://localhost:3100/ready
+
+# Test Loki query
+curl 'http://localhost:3100/loki/api/v1/query_range?query={container="searchflow-ml-engine"}&limit=5'
+```
+
+### Kafka consumer lag issues
+
+```bash
+# Check consumer group status
+docker exec searchflow-kafka kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group searchflow-consumers
+
+# Check kafka-exporter metrics
+curl http://localhost:9308/metrics | grep kafka_consumergroup_lag
 ```
 
 ---

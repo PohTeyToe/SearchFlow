@@ -7,66 +7,46 @@ on:
     branches: [main]
 
 jobs:
-  dbt-compile:
-    name: dbt Compile & Lint
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
-      - name: Install dependencies
-        run: |
-          pip install dbt-duckdb==1.7.0
-          pip install sqlfluff
-      
-      - name: Install dbt packages
-        working-directory: ./dbt_transform
-        run: dbt deps
-      
-      - name: Compile dbt models
-        working-directory: ./dbt_transform
-        run: dbt compile --profiles-dir .
-      
-      - name: Lint SQL with sqlfluff (warnings only)
-        working-directory: ./dbt_transform
-        run: sqlfluff lint models/ --dialect duckdb || true
+      - run: pip install ruff sqlfluff dbt-duckdb>=1.8.0 sqlfluff-templater-dbt
+      - name: Ruff check
+        run: ruff check .
+      - name: SQLFluff lint
+        run: sqlfluff lint dbt_transform/models/ --dialect duckdb || true
         continue-on-error: true
 
-  python-lint:
-    name: Python Lint
+  dbt-build:
+    name: dbt Build & Test
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - run: pip install dbt-duckdb>=1.8.0
+      - name: dbt deps
+        working-directory: ./dbt_transform
+        run: dbt deps
+      - name: dbt build
+        working-directory: ./dbt_transform
+        run: dbt build --profiles-dir .
+      - name: dbt test
+        working-directory: ./dbt_transform
+        run: dbt test --profiles-dir .
 
-      - name: Install linters
-        run: pip install ruff
-
-      - name: Lint Python code
-        run: ruff check event_generator/ reverse_etl/ scripts/ kafka_consumer/ search_assistant/ --ignore E501
-
-  python-test:
+  python-tests:
     name: Python Tests
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -74,13 +54,20 @@ jobs:
         run: |
           pip install pytest numpy pandas scikit-learn xgboost shap joblib
           pip install fastapi httpx uvicorn pydantic redis slowapi
-          pip install mlflow>=3.10.0
+          pip install mlflow>=3.10.0 prometheus-fastapi-instrumentator
+          pip install structlog pyyaml
+          pip install evidently>=0.4.0
 
       - name: Install event generator dependencies
-        run: pip install click redis confluent-kafka
+        run: pip install click redis confluent-kafka faker pydantic
 
-      - name: Install reverse ETL dependencies
-        run: pip install duckdb psycopg2-binary redis
+      - name: Install kafka consumer dependencies
+        run: pip install confluent-kafka duckdb python-dotenv
+
+      - name: Install search assistant dependencies
+        run: |
+          pip install langchain langchain-core langchain-anthropic langgraph
+          pip install fastapi httpx uvicorn duckdb pydantic
 
       - name: Run ML engine tests
         working-directory: ./ml_engine
@@ -90,92 +77,50 @@ jobs:
         working-directory: ./event_generator
         run: python -m pytest tests/ -v --tb=short
 
-      - name: Run reverse ETL tests
-        working-directory: ./reverse_etl
-        run: python -m pytest tests/ -v --tb=short
-
-  mlflow-test:
-    name: MLflow Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          pip install pytest numpy pandas scikit-learn xgboost shap joblib
-          pip install mlflow>=3.10.0
-          pip install fastapi httpx uvicorn pydantic redis slowapi prometheus-fastapi-instrumentator
-
-      - name: Run MLflow tests
-        working-directory: ./ml_engine
-        run: python -m pytest tests/ -v --tb=short -k "mlflow"
-
-  kafka-test:
-    name: Kafka Consumer Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install pytest confluent-kafka duckdb python-dotenv
-
-      - name: Run Kafka consumer tests
+      - name: Run kafka consumer tests
         working-directory: ./kafka_consumer
         run: python -m pytest tests/ -v --tb=short
-
-  search-assistant-test:
-    name: Search Assistant Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          pip install pytest langchain langchain-core langchain-anthropic langgraph
-          pip install fastapi httpx uvicorn duckdb pydantic
 
       - name: Run search assistant tests
         working-directory: ./search_assistant
         run: python -m pytest tests/ -v --tb=short
 
-  dashboard-test:
+  model-eval:
+    name: Model Evaluation Gate
+    runs-on: ubuntu-latest
+    needs: [python-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install numpy pandas scikit-learn xgboost shap joblib mlflow>=3.10.0
+      - name: Cache hotel bookings dataset
+        uses: actions/cache@v4
+        with:
+          path: data/raw/hotel_bookings.csv
+          key: dataset-${{ hashFiles('scripts/download_datasets.sh') }}
+      - name: Download datasets
+        run: |
+          if [ ! -f data/raw/hotel_bookings.csv ]; then
+            bash scripts/download_datasets.sh
+          fi
+      - name: Evaluate model
+        run: python scripts/evaluate_model.py
+
+  dashboard-tests:
     name: Dashboard Tests
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Install dependencies
         working-directory: ./dashboard
         run: npm ci
-
       - name: Run tests
         working-directory: ./dashboard
         run: npm test

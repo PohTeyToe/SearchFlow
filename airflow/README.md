@@ -17,6 +17,8 @@ Ingestion → Transformation → Reverse-ETL
 | `searchflow_ingestion` | `*/5 * * * *` (every 5 min) | Load events from JSONL → raw tables |
 | `searchflow_transformation` | `0 * * * *` (hourly) | Run dbt models + tests |
 | `searchflow_reverse_etl` | `0 */6 * * *` (every 6 hrs) | Sync marts → operational systems |
+| `searchflow_training` | `0 0 * * 0` (weekly) | Retrain all ML models with MLflow |
+| `searchflow_model_monitoring` | `0 6 * * *` (daily) | Drift detection, conditional retraining |
 
 ## File Structure
 
@@ -26,7 +28,9 @@ airflow/
 ├── dags/
 │   ├── ingestion_dag.py        # Raw data ingestion
 │   ├── transformation_dag.py   # dbt run + test
-│   └── reverse_etl_dag.py      # Sync to Redis/Postgres
+│   ├── reverse_etl_dag.py      # Sync to Redis/Postgres
+│   ├── training_dag.py          # Weekly ML model retraining
+│   └── monitoring_dag.py        # Daily drift detection
 └── plugins/           # Custom operators (if any)
 ```
 
@@ -67,6 +71,30 @@ start → sync_user_segments → sync_recommendations → end
 - Syncs `mart_user_segments` → Postgres CRM
 - Syncs `mart_recommendations` → Redis cache
 
+### 4. Training DAG
+
+**File**: `dags/training_dag.py`
+
+```
+train_churn → train_sentiment → train_recommender
+```
+
+- Runs models via `docker exec` into ml-engine container
+- MLflow tracking for all training runs
+- SLA: 30 minutes per task
+
+### 5. Monitoring DAG
+
+**File**: `dags/monitoring_dag.py`
+
+```
+check_drift → evaluate_drift → [trigger_retrain | skip_retrain]
+```
+
+- Evidently AI drift detection on hotel booking features
+- Conditional retraining when drift_score > 0.3
+- SLA: 20 minutes
+
 ## Environment Variables
 
 | Variable | Default | Description |
@@ -74,6 +102,9 @@ start → sync_user_segments → sync_recommendations → end
 | `DUCKDB_PATH` | `/data/searchflow.duckdb` | Warehouse path |
 | `AIRFLOW__CORE__EXECUTOR` | `LocalExecutor` | Executor type |
 | `AIRFLOW_UID` | `50000` | Airflow user ID |
+| `AIRFLOW__METRICS__STATSD_ON` | `true` | Enable StatsD metrics |
+| `AIRFLOW__METRICS__STATSD_HOST` | `statsd-exporter` | StatsD target |
+| `MLFLOW_TRACKING_URI` | `http://mlflow:5000` | MLflow server |
 
 ## Usage
 

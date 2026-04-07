@@ -77,29 +77,30 @@ XGBoost gradient-boosted classifier with SHAP explanations. Predicts the probabi
 
 | Feature | Description |
 |-|-|
-| `sessions_7d` | Sessions in the last 7 days |
-| `sessions_30d` | Sessions in the last 30 days |
-| `sessions_90d` | Sessions in the last 90 days |
-| `searches_total` | Lifetime search count |
-| `clicks_total` | Lifetime click count |
-| `conversions_total` | Lifetime booking count |
-| `search_to_click_ratio` | Clicks / searches |
-| `click_to_conversion_ratio` | Conversions / clicks |
-| `avg_session_duration_mins` | Mean session length |
-| `days_since_last_activity` | Days since last event |
-| `lifetime_value` | Total booking revenue |
-| `unique_destinations_searched` | Destination diversity |
-| `mobile_session_ratio` | Fraction of sessions on mobile |
-| `weekend_session_ratio` | Fraction of sessions on weekends |
+| `lead_time` | Days between booking and arrival |
+| `total_stay_nights` | Weekend + weekday nights combined |
+| `adr` | Average daily rate in euros |
+| `is_repeated_guest` | 1 if returning customer |
+| `previous_cancellations` | Prior cancellation count |
+| `previous_bookings_not_canceled` | Prior completed bookings |
+| `booking_changes` | Number of booking modifications |
+| `total_of_special_requests` | Special requests count |
+| `days_in_waiting_list` | Days on waitlist |
+| `guests_total` | Adults + children + babies |
+| `deposit_type_encoded` | Deposit category (0=none, 1=non-refund, 2=refundable) |
+| `market_segment_encoded` | Booking channel encoded |
+| `customer_type_encoded` | Customer type encoded |
+| `weekend_stay_ratio` | Fraction of stay on weekends |
 
 ### Evaluation
 
 | Metric | Value |
 |-|-|
-| AUC-ROC | 0.85 |
-| Precision | 0.81 |
+| AUC-ROC | 0.87 |
+| Accuracy | 0.82 |
+| Precision | 0.85 |
 | Recall | 0.78 |
-| F1 | 0.79 |
+| F1 | 0.82 |
 
 ### SHAP Explanations
 
@@ -135,10 +136,32 @@ ml_engine/models/
         metadata.json
 ```
 
-Training results are saved to `ml_engine/training_results/` and exposed via the `/metrics` endpoint.
+Training results are saved to `ml_engine/training_results/` and exposed via the `/model-metrics` endpoint.
 
 ---
 
 ## Retraining
 
 Models should be retrained when new data accumulates (weekly for recommendations and churn, monthly for sentiment) or when performance metrics degrade. Retraining is manual; exec into the ML engine container and run training scripts.
+
+---
+
+## 4. Drift Monitoring
+
+Evidently AI detects feature distribution drift between reference and current data. The monitoring DAG runs daily:
+
+1. Splits hotel booking data into reference (80%) and current (20%) windows
+2. Runs `DataDriftPreset` report on 14 features
+3. Saves HTML report and JSON results
+4. Logs drift metrics to MLflow
+5. Triggers retraining if drift_score > 0.3
+
+The `/monitor/drift` API endpoint exposes the latest drift check results. Four simulation scenarios test the detection framework: pandemic, seasonal, geographic, and price inflation shifts.
+
+## 5. MLflow Integration
+
+All training runs are tracked in MLflow at http://localhost:5000:
+
+- Experiment: `churn-prediction`, `sentiment-analysis`, `recommendation-engine`
+- Logged: hyperparameters, evaluation metrics, SHAP plots, model artifacts
+- The CI model-eval gate requires AUC-ROC >= 0.83

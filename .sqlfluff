@@ -1,0 +1,36 @@
+[sqlfluff]
+templater = dbt
+dialect = duckdb
+max_line_length = 120
+large_file_skip_byte_limit = 40000
+
+[sqlfluff:templater:dbt]
+project_dir = dbt_transform
+profiles_dir = dbt_transform
+profile = searchflow
+target = dev
+
+[sqlfluff:indentation]
+indent_unit = space
+tab_space_size = 4
+indented_joins = false
+indented_ctes = false
+indented_using_on = true
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.identifiers]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.literals]
+capitalisation_policy = lower
+
+[sqlfluff:rules:layout.long_lines]
+max_line_length = 120
+
+[sqlfluff:rules:ambiguous.column_references]
+group_by_and_order_by_style = implicit

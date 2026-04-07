@@ -199,6 +199,41 @@ This "closing the loop" enables:
    - Segment transition analysis
    - High-value user characteristics
 
+### 6. ML Serving Layer
+
+**Component**: `ml_engine/`
+
+**Responsibility**: Real-time ML inference with Redis caching and Prometheus instrumentation.
+
+- FastAPI serving 3 models (churn, sentiment, recommendation)
+- XGBoost churn model trained on Hotel Booking Demand dataset (119K bookings)
+- SHAP explainability on every churn prediction
+- Prometheus metrics at `/metrics/prometheus`
+- Drift monitoring via Evidently AI at `/monitor/drift`
+- MLflow experiment tracking for all training runs
+
+### 7. AI Assistant Layer
+
+**Component**: `search_assistant/`
+
+**Responsibility**: Natural-language analytics queries via LangGraph agent with 5 tools (SQL query, churn prediction, SHAP explanation, funnel analysis, user lookup).
+
+### 8. Streaming Layer
+
+**Component**: `kafka_consumer/`
+
+**Responsibility**: Real-time event ingestion from Kafka 4.0 (KRaft mode) to DuckDB with batch insert and write-lock retry.
+
+### 9. Observability Stack
+
+**Component**: `monitoring/`
+
+**Services**: Prometheus, Grafana (:3001), Loki, Promtail, statsd-exporter, kafka-exporter
+
+**Dashboards**: Pipeline Health, ML Serving, Kafka Metrics, System Overview
+
+Prometheus scrapes ml-engine, statsd-exporter (Airflow metrics), and kafka-exporter. Promtail ships all container logs to Loki. Grafana auto-provisions 4 dashboards via file-based provisioning.
+
 ---
 
 ## Data Flow Diagram
@@ -266,9 +301,9 @@ This "closing the loop" enables:
 ## Scalability Considerations
 
 ### Current (Local Development)
-- 10 events/second
-- ~100K events/day
-- Single DuckDB instance
+- 10-1000 events/second
+- 119K hotel bookings + streaming events
+- DuckDB (single-node, scaling to ClickHouse documented in docs/SCALE.md)
 - Docker Compose orchestration
 
 ### Production Path (Documented)
@@ -276,7 +311,7 @@ This "closing the loop" enables:
 - 10M+ events/day
 - Snowflake data warehouse
 - Kubernetes orchestration
-- Kafka for event streaming
+- See docs/SCALE.md for detailed scaling analysis with concrete math
 
 **The code is written to be production-ready** with:
 - Environment-based configuration
@@ -299,20 +334,25 @@ Even for a portfolio project, demonstrate security awareness:
 
 ## Monitoring & Observability
 
-### Airflow Metrics
-- DAG run duration
-- Task success/failure rates
-- SLA misses
+### Prometheus Metrics
+- ML Engine: request rate, latency percentiles, error rate, in-flight requests (`/metrics/prometheus`)
+- Airflow: DAG run durations, task durations, scheduler heartbeat, SLA misses (via StatsD → statsd-exporter)
+- Kafka: consumer group lag, message throughput, broker status, partition health (via kafka-exporter)
 
-### dbt Metrics
-- Model run times
-- Test pass rates
-- Data freshness
+### Grafana Dashboards (auto-provisioned at :3001)
+- **Pipeline Health**: DAG run status, task durations, SLA misses, scheduler heartbeat
+- **ML Serving**: Request rate by endpoint, latency p50/p95/p99, error rate, response size
+- **Kafka Metrics**: Consumer lag, messages/sec, broker status, under-replicated partitions
+- **System Overview**: Executive KPIs combining all subsystems + Loki error log panel
 
-### Application Metrics
-- Events processed per minute
-- Reverse-ETL sync latency
-- Error rates by component
+### Structured Logging
+- All 4 Python services configured with structlog (JSON format to stdout)
+- Promtail ships container logs to Loki
+- Query logs in Grafana Explore: `{container="searchflow-ml-engine"} | json`
+
+### SLA Monitoring
+- Airflow tasks have `sla=timedelta()` parameters (5-30 min depending on DAG)
+- SLA misses visible in Airflow UI and emitted as StatsD metrics
 
 ---
 

@@ -31,24 +31,39 @@ docker-compose ps
 | React Dashboard | http://localhost:5173 | -- |
 | PostgreSQL | localhost:5432 | airflow / airflow |
 | Redis | localhost:6379 | -- |
+| Grafana | http://localhost:3001 | admin / admin |
+| MLflow | http://localhost:5000 | -- |
+| Search Assistant | http://localhost:8001 | -- |
+| Kafka | localhost:9092 / localhost:29092 | -- |
+| Prometheus | http://localhost:9090 | -- |
 
 ---
 
 ## Docker Architecture
 
-SearchFlow runs 9 services orchestrated by Docker Compose:
+SearchFlow runs 20 services orchestrated by Docker Compose:
 
 ```
-searchflow-postgres          PostgreSQL 15 (Airflow metadata + CRM tables)
+searchflow-postgres          PostgreSQL 15 (Airflow metadata + CRM)
 searchflow-redis             Redis 7 Alpine (event buffer + ML cache)
 searchflow-airflow-init      One-shot Airflow DB initialization
 searchflow-airflow-webserver Airflow 2.8 web UI
 searchflow-airflow-scheduler Airflow 2.8 scheduler
-searchflow-event-generator   Python event simulator
+searchflow-event-generator   Python event simulator + Kafka producer
 searchflow-reverse-etl       Python reverse-ETL syncs
 searchflow-ml-engine         FastAPI ML inference server
+searchflow-search-assistant  LangGraph AI analytics assistant
+searchflow-kafka             Apache Kafka 4.0 (KRaft mode)
+searchflow-kafka-consumer    Kafka-to-DuckDB streaming consumer
+searchflow-mlflow            MLflow experiment tracking server
 searchflow-spark             PySpark 3.5 (Bitnami image)
-searchflow-metabase          Metabase (optional BI tool)
+searchflow-metabase          Metabase BI tool
+searchflow-prometheus        Prometheus metrics collection
+searchflow-grafana           Grafana dashboard visualization
+searchflow-loki              Loki log aggregation
+searchflow-promtail          Promtail log shipping
+searchflow-statsd-exporter   Airflow StatsD → Prometheus bridge
+searchflow-kafka-exporter    Kafka metrics → Prometheus bridge
 ```
 
 ### Build Custom Images
@@ -147,8 +162,14 @@ docker-compose exec spark spark-submit /app/user_segmentation.py \
 | ML Engine | 800 MB (with PyTorch models loaded) |
 | Spark | 1-2 GB |
 | Metabase | 500 MB |
+| Grafana | 200 MB |
+| Prometheus | 300 MB |
+| Loki | 200 MB |
+| Kafka | 500 MB |
+| MLflow | 300 MB |
+| Search Assistant | 200 MB |
 
-Total: approximately 3-4 GB with all services running.
+Total: approximately 6-8 GB with all services running.
 
 ---
 
@@ -160,6 +181,6 @@ This project is designed for local development and portfolio demonstration. For 
 2. **Warehouse**: Replace DuckDB with Snowflake or BigQuery
 3. **Streaming**: Replace file-based events with Kafka or Kinesis
 4. **Secrets**: Use a secrets manager instead of `.env` files
-5. **Monitoring**: Add Prometheus + Grafana for service metrics
-6. **CI/CD**: Extend GitHub Actions with Docker image builds and staged deployments
+5. **Monitoring**: Prometheus + Grafana already implemented — extend with alerting rules and PagerDuty integration
+6. **CI/CD**: CI/CD implemented with GitHub Actions — add Docker image builds and staged deployments
 7. **Scaling**: Run the ML engine behind a load balancer with multiple replicas

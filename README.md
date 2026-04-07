@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Kafka-4.0-231F20?logo=apachekafka&logoColor=white" alt="Kafka" />
-  <img src="https://img.shields.io/badge/Docker-14%20services-2496ED?logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/Docker-20%20services-2496ED?logo=docker&logoColor=white" alt="Docker" />
   <img src="https://img.shields.io/badge/Tests-180%2B%20passing-brightgreen" alt="Tests" />
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License" />
 </p>
@@ -133,7 +133,7 @@ The frontend is a standalone React app deployed on Vercel. It works entirely wit
 git clone https://github.com/PohTeyToe/SearchFlow.git
 cd SearchFlow
 
-# Full stack (14 Docker services)
+# Full stack (20 Docker services)
 cp env.example .env
 docker-compose up -d
 
@@ -149,6 +149,7 @@ cd dashboard && npm install && npm run dev
 | MLflow | http://localhost:5000 |
 | Search Assistant | http://localhost:8001 |
 | Metabase | http://localhost:3000 |
+| Grafana | http://localhost:3001 (admin/admin) |
 
 ## ML Engine
 
@@ -168,6 +169,8 @@ curl -X POST http://localhost:8000/sentiment \
 ```
 
 ### Model Performance
+
+Trained on [Hotel Booking Demand](https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand) dataset (119,390 bookings, CC BY 4.0).
 
 | Model | Metric | Score |
 |-|-|-|
@@ -198,10 +201,10 @@ cd dashboard && npm test
 
 | Suite | Count |
 |-|-|
-| Python tests (pytest) | 110+ |
+| Python tests (pytest) | 180+ |
 | dbt tests | 71 |
 | Frontend tests (Vitest) | 56 |
-| Docker services | 14 |
+| Docker services | 20 |
 
 ## Architecture Decisions
 
@@ -236,7 +239,7 @@ SearchFlow/
 ├── reverse_etl/           Sync marts to CRM, email, Redis
 ├── warehouse/             DuckDB schema init
 ├── benchmarks/            Locust load testing
-└── docker-compose.yml     14 services
+└── docker-compose.yml     20 services
 ```
 
 ## License

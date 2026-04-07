@@ -156,13 +156,22 @@ print(f"Confidence: {result.confidence:.1%}")  # 95.2%
 
 ### Feature Engineering
 
-| Feature | Description | Importance |
-|---------|-------------|------------|
-| `days_since_last_activity` | Recency of last visit | High |
-| `sessions_7d` | Weekly engagement | High |
-| `search_to_click_ratio` | Engagement depth | Medium |
-| `conversions_total` | Purchase history | Medium |
-| `mobile_session_ratio` | Platform preference | Low |
+| Feature | Description |
+|-|-|
+| `lead_time` | Days between booking and arrival |
+| `total_stay_nights` | Weekend + weekday nights combined |
+| `adr` | Average daily rate in euros |
+| `is_repeated_guest` | 1 if returning customer |
+| `previous_cancellations` | Prior cancellation count |
+| `previous_bookings_not_canceled` | Prior completed bookings |
+| `booking_changes` | Number of booking modifications |
+| `total_of_special_requests` | Special requests count |
+| `days_in_waiting_list` | Days on waitlist |
+| `guests_total` | Adults + children + babies |
+| `deposit_type_encoded` | Deposit category (0=none, 1=non-refund, 2=refundable) |
+| `market_segment_encoded` | Booking channel encoded |
+| `customer_type_encoded` | Customer type encoded |
+| `weekend_stay_ratio` | Fraction of stay on weekends |
 
 ### SHAP Explainability
 
@@ -184,10 +193,11 @@ Each prediction includes top factors contributing to churn risk:
 ### Performance
 
 ```
-AUC:        0.85
-Accuracy:   0.81
-Precision:  0.79
-Recall:     0.76
+AUC-ROC:    0.87
+Accuracy:   0.82
+Precision:  0.85
+Recall:     0.78
+F1:         0.82
 ```
 
 ### Usage Example
@@ -221,6 +231,10 @@ print(f"Top Factor: {result.top_factors[0]['feature']}")
 | `POST /recommend/{user_id}` | `{"top_n": 10}` | Top-N recommendations |
 | `POST /sentiment` | `{"text": "..."}` | Sentiment + confidence |
 | `POST /churn/{user_id}` | `{"features": {...}}` | Probability + SHAP factors |
+| `GET /model-metrics` | - | Model performance data |
+| `GET /metrics/prometheus` | - | Prometheus text metrics |
+| `GET /monitor/drift` | - | Drift detection status |
+| `GET /monitor/performance` | - | MLflow performance history |
 
 ### Caching Strategy
 

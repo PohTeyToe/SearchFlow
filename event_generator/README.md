@@ -17,7 +17,7 @@ event_generator/
 │   ├── config.py       # Configuration (env vars, defaults)
 │   ├── generator.py    # Core event generation logic
 │   ├── models.py       # Event dataclasses (SearchEvent, ClickEvent, ConversionEvent)
-│   ├── publishers.py   # Output handlers (file, Redis)
+│   ├── publishers.py   # Output: file, Redis, Kafka, console
 │   └── main.py         # CLI entry point
 └── tests/
 ```
@@ -44,6 +44,7 @@ All configuration via environment variables:
 | `CONVERSION_RATE` | `0.10` | Probability of conversion after click |
 | `USER_POOL_SIZE` | `10000` | Number of simulated users |
 | `ANONYMOUS_RATE` | `0.40` | Fraction of anonymous sessions |
+| `KAFKA_BOOTSTRAP_SERVERS` | `kafka:9092` | Kafka broker address |
 
 ## Usage
 
@@ -109,3 +110,5 @@ The generator implements realistic user behavior:
 - **Conversion funnels**: 30% CTR, 10% conversion rate
 - **Geographic distribution**: Weighted by population
 - **UTM attribution**: Marketing channel simulation
+- **Hotel booking distributions**: Event parameters (ADR, lead time, stay duration) sampled from real Hotel Booking Demand dataset distributions
+- **Kafka streaming**: Real-time event publishing to Kafka 4.0 (KRaft mode)

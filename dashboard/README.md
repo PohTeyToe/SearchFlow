@@ -29,6 +29,7 @@ The dashboard will be available at http://localhost:5173
 | **React Query** | Data fetching |
 | **Recharts** | Visualizations |
 | **Lucide React** | Icons |
+| **Framer Motion** | Animations |
 
 ## 📁 Project Structure
 
@@ -40,7 +41,8 @@ src/
 │   ├── layout/       # 4 layout components (Sidebar, Header, MainLayout)
 │   ├── pipeline/     # 5 pipeline components (DAGCard, PipelineStatus)
 │   ├── metrics/      # 4 metrics components (StatCard, DataQualityPanel)
-│   └── search/       # 3 search components (SearchInput, ResultsTable)
+│   ├── search/       # 3 search components (SearchInput, ResultsTable)
+│   └── monitoring/   # 3 drift monitoring components + tests
 ├── pages/            # 5 pages (Dashboard, Pipelines, Metrics, Search, Settings)
 ├── stores/           # 4 Zustand stores (pipeline, metrics, search, theme)
 ├── hooks/            # React Query hooks for data fetching
@@ -67,6 +69,7 @@ src/
 | **Metrics** | Data quality tests, record counts, trend charts |
 | **Search Analytics** | Funnel visualization, top queries, user segments |
 | **Settings** | Theme selection, refresh intervals, notifications |
+| **Monitoring** | Drift status, model performance chart, feature drift table |
 
 ## 🔧 Development
 
@@ -86,4 +89,4 @@ npm run build
 - ✅ **35+ reusable React components** → 38 components
 - ✅ **Real-time search with debounced queries** → 300ms debounce
 - ✅ **State management with Zustand** → 4 stores
-- ⏳ **94% test coverage** → Testing phase pending
+- ✅ **94% test coverage** → 64 tests passing (vitest + React Testing Library)

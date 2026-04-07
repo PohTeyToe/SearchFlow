@@ -5,14 +5,16 @@ Helper scripts for setup, data management, and verification.
 ## Scripts
 
 | Script | Purpose |
-|--------|---------|
-| `setup_local.sh` | Initialize local development environment |
-| `run_demo.sh` | Run complete end-to-end demo |
-| `seed_data.py` | Generate initial seed data |
-| `load_to_duckdb.py` | Load JSONL files to DuckDB |
+|-|-|
+| `download_datasets.sh` | Download Hotel Booking Demand dataset from Kaggle |
+| `evaluate_model.py` | CI model evaluation gate (AUC-ROC >= 0.83) |
+| `seed_metrics.py` | Populate Grafana dashboards with sample Prometheus data |
+| `seed_data.py` | Generate initial seed data for DuckDB |
+| `simulate_drift.py` | Run Evidently drift simulations (4 scenarios) |
+| `simulate_incident.py` | Data quality incident simulation and validation |
+| `load_to_duckdb.py` | Load JSONL files to DuckDB warehouse |
 | `verify_data.py` | Verify data in raw tables |
-| `verify_marts.py` | Verify transformed marts |
-| `init_databases.sql` | Create database schemas |
+| `verify_marts.py` | Verify transformed mart data |
 
 ## Usage
 
