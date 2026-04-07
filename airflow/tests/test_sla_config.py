@@ -1,12 +1,6 @@
 """Tests for Airflow SLA configuration on DAG tasks."""
 
-import sys
-from datetime import timedelta
 from pathlib import Path
-from unittest.mock import patch
-
-import pytest
-
 
 # We need to mock Airflow imports since Airflow isn't installed in test env
 # Instead, parse the DAG files and check for sla in default_args

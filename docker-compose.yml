@@ -25,6 +25,7 @@ x-airflow-common: &airflow-common
     - ./dbt_transform:/dbt
     - ./data:/data
     - ./event_generator:/event_generator
+    # Docker socket for training DAG's container access — production would use KubernetesExecutor
     - /var/run/docker.sock:/var/run/docker.sock
   depends_on:
     postgres:
@@ -46,8 +47,6 @@ services:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
-      # Additional DB for CRM simulation
-      POSTGRES_MULTIPLE_DATABASES: searchflow
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./warehouse/init.sql:/docker-entrypoint-initdb.d/01-init.sql
@@ -98,7 +97,7 @@ services:
   airflow-webserver:
     <<: *airflow-common
     container_name: searchflow-airflow-webserver
-    command: bash -c "pip install duckdb redis "dbt-duckdb>=1.8.0" && airflow webserver"
+    command: bash -c "pip install duckdb redis 'dbt-duckdb>=1.8.0' && airflow webserver"
     ports:
       - "8080:8080"
     healthcheck:
@@ -113,7 +112,7 @@ services:
   airflow-scheduler:
     <<: *airflow-common
     container_name: searchflow-airflow-scheduler
-    command: bash -c "pip install duckdb redis "dbt-duckdb>=1.8.0" && airflow scheduler"
+    command: bash -c "pip install duckdb redis 'dbt-duckdb>=1.8.0' && airflow scheduler"
     depends_on:
       airflow-init:
         condition: service_completed_successfully
@@ -436,6 +435,12 @@ services:
     ports:
       - "9125:9125/udp"
       - "9102:9102"
+    volumes:
+      - ./monitoring/statsd/mapping.yml:/tmp/mapping.yml:ro
+    command:
+      - '--statsd.mapping-config=/tmp/mapping.yml'
+      - '--statsd.listen-udp=:9125'
+      - '--web.listen-address=:9102'
     restart: unless-stopped
     networks:
       - searchflow-network

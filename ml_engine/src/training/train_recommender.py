@@ -8,20 +8,19 @@ trains collaborative + content-based models, and evaluates precision@10 + NDCG@1
 import json
 import os
 import sys
-from typing import Optional
-
-import numpy as np
-import pandas as pd
 from pathlib import Path
+from typing import Optional
 
 import mlflow
 import mlflow.sklearn
+import numpy as np
+import pandas as pd
 
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from src.evaluation.metrics import ndcg_at_k
 from src.models.recommendation import HybridRecommender
-from src.evaluation.metrics import precision_at_k, recall_at_k, ndcg_at_k
 
 
 def load_booking_com_trips(data_dir: str) -> Optional[pd.DataFrame]:
@@ -70,15 +69,15 @@ def load_booking_com_trips(data_dir: str) -> Optional[pd.DataFrame]:
 def load_interaction_data(duckdb_path: str) -> pd.DataFrame:
     """Load user-item interactions from warehouse."""
     import duckdb
-    
+
     conn = duckdb.connect(duckdb_path, read_only=True)
-    
+
     # Get search and click events
     query = """
-    SELECT 
+    SELECT
         user_id,
         query as item_id,
-        CASE 
+        CASE
             WHEN event_type = 'conversion' THEN 5.0
             WHEN event_type = 'click' THEN 3.0
             ELSE 1.0
@@ -93,13 +92,13 @@ def load_interaction_data(duckdb_path: str) -> pd.DataFrame:
         WHERE user_id IS NOT NULL
     )
     """
-    
+
     try:
         df = conn.execute(query).fetchdf()
-    except:
+    except Exception:
         # Fallback: generate synthetic data
         df = generate_synthetic_interactions()
-    
+
     conn.close()
     return df
 
@@ -107,7 +106,7 @@ def load_interaction_data(duckdb_path: str) -> pd.DataFrame:
 def generate_synthetic_interactions(n_users: int = 5000, n_items: int = 50) -> pd.DataFrame:
     """Generate synthetic interaction data for training."""
     np.random.seed(42)
-    
+
     users = [f"user_{i}" for i in range(n_users)]
     items = [
         "Miami", "Toronto", "NYC", "Los Angeles", "Las Vegas",
@@ -119,13 +118,13 @@ def generate_synthetic_interactions(n_users: int = 5000, n_items: int = 50) -> p
         "family vacation Orlando", "ski Denver", "Boston weekend",
         "Chicago downtown", "Seattle coffee tour", "SF tech district"
     ] + [f"destination_{i}" for i in range(n_items - 32)]
-    
+
     interactions = []
     for user in users:
         # Each user has 5-20 interactions
         n_interactions = np.random.randint(5, 21)
         user_items = np.random.choice(items, size=n_interactions, replace=False)
-        
+
         for item in user_items:
             # Rating based on position preference simulation
             rating = np.random.choice([1, 2, 3, 4, 5], p=[0.1, 0.15, 0.25, 0.3, 0.2])
@@ -134,14 +133,14 @@ def generate_synthetic_interactions(n_users: int = 5000, n_items: int = 50) -> p
                 'item_id': item,
                 'rating': float(rating)
             })
-    
+
     return pd.DataFrame(interactions)
 
 
 def generate_item_features(items: list) -> pd.DataFrame:
     """Generate item feature matrix."""
     np.random.seed(42)
-    
+
     features = []
     for item in items:
         features.append({
@@ -153,7 +152,7 @@ def generate_item_features(items: list) -> pd.DataFrame:
             'family_friendly': np.random.uniform(0, 1),
             'luxury_score': np.random.uniform(0, 1),
         })
-    
+
     return pd.DataFrame(features)
 
 
@@ -190,32 +189,32 @@ def train_recommender(
         except Exception:
             print("  Using synthetic data (no real data available)")
             interactions_df = generate_synthetic_interactions()
-    
+
     print(f"  Loaded {len(interactions_df):,} interactions")
     print(f"  Users: {interactions_df['user_id'].nunique():,}")
     print(f"  Items: {interactions_df['item_id'].nunique():,}")
-    
+
     # Generate item features
     print("\n[2/4] Building item features...")
     items = interactions_df['item_id'].unique().tolist()
     items_df = generate_item_features(items)
-    feature_cols = ['price_level', 'popularity', 'beach_score', 
+    feature_cols = ['price_level', 'popularity', 'beach_score',
                     'city_score', 'family_friendly', 'luxury_score']
     print(f"  Features: {feature_cols}")
-    
+
     # Split data for evaluation
     print("\n[3/4] Training model...")
-    
+
     # Hold out 20% of users for evaluation
     users = interactions_df['user_id'].unique()
     np.random.shuffle(users)
     split_idx = int(len(users) * 0.8)
     train_users = set(users[:split_idx])
     test_users = set(users[split_idx:])
-    
+
     train_df = interactions_df[interactions_df['user_id'].isin(train_users)]
     test_df = interactions_df[interactions_df['user_id'].isin(test_users)]
-    
+
     # Train model with MLflow tracking
     with mlflow.start_run():
         recommender = HybridRecommender(n_factors=50, collab_weight=0.6, content_weight=0.4)
@@ -299,7 +298,7 @@ def train_recommender(
         with open(os.path.join(results_dir, "recommender_results.json"), "w") as f:
             json.dump(results, f, indent=2)
 
-        print(f"\n  Recommendation model trained successfully!")
+        print("\n  Recommendation model trained successfully!")
         print(f"   Precision@10: {precision_10:.2%}")
 
     return recommender, precision_10
@@ -307,7 +306,7 @@ def train_recommender(
 
 if __name__ == "__main__":
     import argparse
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--duckdb-path", default="/data/searchflow.duckdb")
     parser.add_argument("--model-path", default="./models/recommendation")

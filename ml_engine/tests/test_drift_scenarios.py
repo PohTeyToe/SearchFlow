@@ -3,22 +3,20 @@
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.models.churn import ChurnPredictor, engineer_features
-from src.monitoring.scenarios import (
-    pandemic_scenario,
-    seasonal_peak_scenario,
-    geographic_shift_scenario,
-    price_inflation_scenario,
-    SCENARIOS,
-)
 from src.monitoring.drift import DriftDetector
-
+from src.monitoring.scenarios import (
+    SCENARIOS,
+    geographic_shift_scenario,
+    pandemic_scenario,
+    price_inflation_scenario,
+    seasonal_peak_scenario,
+)
 
 HOTEL_CSV = str(Path(__file__).resolve().parent.parent.parent / "data" / "raw" / "hotel_bookings.csv")
 

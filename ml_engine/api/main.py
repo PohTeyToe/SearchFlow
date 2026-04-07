@@ -6,20 +6,19 @@ Supports Redis caching for low-latency responses.
 """
 
 import hashlib
+import json
+import logging
 import os
 import sys
-import json
-import time
-import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
-from contextlib import asynccontextmanager
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Query, Request
+import redis
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import redis
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -33,17 +32,50 @@ except ImportError:
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Configure structured logging
+import structlog
+
 from api.schemas import (
-    RecommendationRequest, RecommendationResponse, RecommendationItem,
-    SentimentRequest, SentimentResponse, BatchSentimentRequest, BatchSentimentResponse,
-    ChurnRequest, ChurnResponse, ChurnFactor, RiskLevel,
-    HealthResponse, SentimentLabel, ErrorDetail, ErrorResponse,
-    DriftStatusResponse, PerformanceRecord,
+    BatchSentimentRequest,
+    BatchSentimentResponse,
+    ChurnFactor,
+    ChurnRequest,
+    ChurnResponse,
+    DriftStatusResponse,
+    ErrorDetail,
+    ErrorResponse,
+    HealthResponse,
+    PerformanceRecord,
+    RecommendationItem,
+    RecommendationRequest,
+    RecommendationResponse,
+    RiskLevel,
+    SentimentLabel,
+    SentimentRequest,
+    SentimentResponse,
 )
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
+def _configure_logging():
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.UnicodeDecoder(),
+            structlog.processors.JSONRenderer(),
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+        context_class=dict,
+        logger_factory=structlog.PrintLoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+
+_configure_logging()
+logger = structlog.get_logger(service="ml-engine")
 
 # ============================================
 # Configuration
@@ -66,7 +98,7 @@ if _vercel_url:
     ALLOWED_ORIGINS.append(_vercel_url.rstrip("/"))
 
 # Paths that bypass API key authentication
-PUBLIC_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
+PUBLIC_PATHS = {"/health", "/docs", "/openapi.json", "/redoc", "/metrics/prometheus"}
 
 # ============================================
 # Global State
@@ -89,9 +121,9 @@ redis_client: Optional[redis.Redis] = None
 async def lifespan(app: FastAPI):
     """Load models on startup, cleanup on shutdown."""
     global redis_client
-    
+
     logger.info("Starting ML Engine...")
-    
+
     # Connect to Redis
     try:
         redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
@@ -100,14 +132,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Redis not available: {e}")
         redis_client = None
-    
+
     # Load models
     load_models()
-    
+
     logger.info("ML Engine ready")
-    
+
     yield
-    
+
     # Cleanup
     logger.info("Shutting down ML Engine...")
     if redis_client:
@@ -117,7 +149,7 @@ async def lifespan(app: FastAPI):
 def load_models():
     """Load trained models from disk."""
     global models
-    
+
     # Load recommender
     recommender_path = os.path.join(MODEL_PATH, "recommendation")
     if os.path.exists(recommender_path):
@@ -127,7 +159,7 @@ def load_models():
             logger.info("Recommender model loaded")
         except Exception as e:
             logger.warning(f"Recommender not loaded: {e}")
-    
+
     # Load sentiment analyzer
     sentiment_path = os.path.join(MODEL_PATH, "sentiment")
     if os.path.exists(sentiment_path):
@@ -137,7 +169,7 @@ def load_models():
             logger.info("Sentiment model loaded")
         except Exception as e:
             logger.warning(f"Sentiment not loaded: {e}")
-    
+
     # Load churn predictor
     churn_path = os.path.join(MODEL_PATH, "churn")
     if os.path.exists(churn_path):
@@ -328,7 +360,7 @@ async def get_recommendations(
 ):
     """
     Get personalized recommendations for a user.
-    
+
     Uses hybrid collaborative + content-based filtering.
     Results are cached in Redis for 1 hour.
     """
@@ -354,7 +386,7 @@ async def get_recommendations(
 
     # Get predictions
     result = models["recommender"].predict(user_id, top_n=body.top_n)
-    
+
     recommendations = [
         RecommendationItem(
             item_id=rec["item_id"],
@@ -363,17 +395,17 @@ async def get_recommendations(
         )
         for rec in result.recommendations
     ]
-    
+
     response = RecommendationResponse(
         user_id=user_id,
         recommendations=recommendations,
         algorithm=result.algorithm,
         cached=False
     )
-    
+
     # Cache result
     set_cached(cache_key, response.model_dump())
-    
+
     return response
 
 
@@ -435,7 +467,7 @@ async def analyze_sentiment_batch(request: Request, body: BatchSentimentRequest)
 async def predict_churn(request: Request, user_id: str, body: ChurnRequest = ChurnRequest()):
     """
     Predict churn probability with SHAP explanations.
-    
+
     Uses XGBoost model with SHAP explanations.
     Returns top risk factors for intervention.
     """
@@ -444,7 +476,7 @@ async def predict_churn(request: Request, user_id: str, body: ChurnRequest = Chu
     cached = get_cached(cache_key)
     if cached and body.features is None:
         return ChurnResponse(**cached, cached=True)
-    
+
     if models["churn"] is None:
         # Mock response
         return ChurnResponse(
@@ -458,12 +490,12 @@ async def predict_churn(request: Request, user_id: str, body: ChurnRequest = Chu
             ],
             cached=False
         )
-    
+
     # Get user features (from body or fetch from warehouse)
     features = body.features or get_user_features(user_id)
-    
+
     result = models["churn"].predict(user_id, features)
-    
+
     response = ChurnResponse(
         user_id=user_id,
         churn_probability=result.churn_probability,
@@ -473,10 +505,10 @@ async def predict_churn(request: Request, user_id: str, body: ChurnRequest = Chu
         ],
         cached=False
     )
-    
+
     # Cache result
     set_cached(cache_key, response.model_dump())
-    
+
     return response
 
 

@@ -7,10 +7,10 @@ Runs hourly.
 
 from datetime import datetime, timedelta
 
-from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.empty import EmptyOperator
 
+from airflow import DAG
 
 default_args = {
     'owner': 'searchflow',
@@ -36,55 +36,55 @@ with DAG(
     tags=['transformation', 'dbt', 'searchflow'],
     max_active_runs=1,
 ) as dag:
-    
+
     start = EmptyOperator(task_id='start')
-    
+
     # Install dbt packages (deps)
     dbt_deps = BashOperator(
         task_id='dbt_deps',
         bash_command=f'{DBT_CMD} deps',
     )
-    
+
     # Run staging models
     dbt_run_staging = BashOperator(
         task_id='dbt_run_staging',
         bash_command=f'{DBT_CMD} run --select staging',
     )
-    
+
     # Run intermediate models
     dbt_run_intermediate = BashOperator(
         task_id='dbt_run_intermediate',
         bash_command=f'{DBT_CMD} run --select intermediate',
     )
-    
+
     # Run mart models
     dbt_run_marts = BashOperator(
         task_id='dbt_run_marts',
         bash_command=f'{DBT_CMD} run --select marts',
     )
-    
+
     # Run all tests
     dbt_test = BashOperator(
         task_id='dbt_test',
         bash_command=f'{DBT_CMD} test',
     )
-    
+
     # Generate documentation (optional, for debugging)
     dbt_docs = BashOperator(
         task_id='dbt_docs_generate',
         bash_command=f'{DBT_CMD} docs generate',
     )
-    
+
     end = EmptyOperator(task_id='end')
-    
+
     # Linear pipeline: deps → staging → intermediate → marts → test → docs
     (
-        start 
-        >> dbt_deps 
-        >> dbt_run_staging 
-        >> dbt_run_intermediate 
-        >> dbt_run_marts 
-        >> dbt_test 
-        >> dbt_docs 
+        start
+        >> dbt_deps
+        >> dbt_run_staging
+        >> dbt_run_intermediate
+        >> dbt_run_marts
+        >> dbt_test
+        >> dbt_docs
         >> end
     )

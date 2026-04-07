@@ -6,8 +6,8 @@ for fine-tuning the sentiment classifier.
 """
 
 import random
-from typing import List, Tuple
 from dataclasses import dataclass
+from typing import List, Tuple
 
 
 @dataclass
@@ -78,7 +78,7 @@ def generate_review(sentiment: str) -> Review:
     aspect = random.choice(ASPECTS)
     aspect2 = random.choice([a for a in ASPECTS if a != aspect])
     adj = random.choice(POSITIVE_ADJECTIVES)
-    
+
     if sentiment == "positive":
         template = random.choice(POSITIVE_TEMPLATES)
         rating = random.choice([4, 5])
@@ -88,9 +88,9 @@ def generate_review(sentiment: str) -> Review:
     else:  # neutral
         template = random.choice(NEUTRAL_TEMPLATES)
         rating = 3
-    
+
     text = template.format(dest=dest, aspect=aspect, aspect2=aspect2, adj=adj)
-    
+
     return Review(
         text=text,
         sentiment=sentiment,
@@ -107,40 +107,40 @@ def generate_dataset(
 ) -> Tuple[List[str], List[str]]:
     """
     Generate a balanced dataset of synthetic reviews.
-    
+
     Args:
         n_samples: Total number of reviews
         pos_ratio: Fraction of positive reviews
         neg_ratio: Fraction of negative reviews
         neu_ratio: Fraction of neutral reviews
-        
+
     Returns:
         Tuple of (texts, labels)
     """
     n_pos = int(n_samples * pos_ratio)
     n_neg = int(n_samples * neg_ratio)
     n_neu = n_samples - n_pos - n_neg
-    
+
     reviews = []
-    
+
     # Generate positive reviews
     for _ in range(n_pos):
         reviews.append(generate_review("positive"))
-    
+
     # Generate negative reviews
     for _ in range(n_neg):
         reviews.append(generate_review("negative"))
-    
+
     # Generate neutral reviews
     for _ in range(n_neu):
         reviews.append(generate_review("neutral"))
-    
+
     # Shuffle
     random.shuffle(reviews)
-    
+
     texts = [r.text for r in reviews]
     labels = [r.sentiment for r in reviews]
-    
+
     return texts, labels
 
 
@@ -148,9 +148,9 @@ def save_dataset(texts: List[str], labels: List[str], path: str):
     """Save dataset to CSV."""
     import csv
     import os
-    
+
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    
+
     with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(['text', 'sentiment'])
@@ -161,11 +161,11 @@ def save_dataset(texts: List[str], labels: List[str], path: str):
 if __name__ == "__main__":
     print("Generating 25,000 synthetic reviews...")
     texts, labels = generate_dataset(25000)
-    
+
     print(f"Generated {len(texts)} reviews:")
     print(f"  Positive: {labels.count('positive')}")
     print(f"  Negative: {labels.count('negative')}")
     print(f"  Neutral: {labels.count('neutral')}")
-    
+
     save_dataset(texts, labels, "./data/reviews.csv")
     print("Saved to ./data/reviews.csv")

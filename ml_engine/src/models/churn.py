@@ -8,19 +8,18 @@ v2.0: Trained on real hotel booking demand data (Antonio et al., 2019).
 Features derived from booking attributes rather than synthetic user sessions.
 """
 
+import json
+import os
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
+import joblib
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass
-import os
-import json
-
-import xgboost as xgb
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import roc_auc_score, classification_report
 import shap
-import joblib
+import xgboost as xgb
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import StandardScaler
 
 
 @dataclass
@@ -233,7 +232,7 @@ class ChurnPredictor:
         y_pred = self.model.predict(X_scaled)
         y_proba = self.model.predict_proba(X_scaled)[:, 1]
 
-        from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+        from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
         return ChurnModelMetrics(
             auc=roc_auc_score(y, y_proba),

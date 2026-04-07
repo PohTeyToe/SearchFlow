@@ -1,16 +1,15 @@
 """Tests for the FastAPI ML inference API endpoints."""
 
-import os
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from fastapi.testclient import TestClient
 from api.main import app, models
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
@@ -272,3 +271,60 @@ class TestMonitoringEndpoints:
     def test_drift_report_404_when_missing(self, client: TestClient) -> None:
         resp = client.get("/monitor/drift/report")
         assert resp.status_code == 404
+
+
+# ------------------------------------------------------------------
+# API Key Authentication
+# ------------------------------------------------------------------
+
+
+class TestApiKeyAuth:
+    """Tests for API key authentication middleware."""
+
+    def test_no_auth_when_key_not_configured(self, client: TestClient) -> None:
+        """All endpoints accessible when ML_API_KEY is empty (default)."""
+        resp = client.post("/churn/user_1")
+        assert resp.status_code == 200
+
+    def test_public_paths_always_accessible(self, client: TestClient) -> None:
+        """Public paths bypass auth regardless of config."""
+        resp = client.get("/health")
+        assert resp.status_code == 200
+        resp = client.get("/docs")
+        assert resp.status_code == 200
+
+    def test_rejects_without_key_when_configured(self) -> None:
+        """When ML_API_KEY is set, non-public endpoints reject missing keys."""
+        import api.main as main_mod
+        original = main_mod.ML_API_KEY
+        try:
+            main_mod.ML_API_KEY = "test-secret"
+            c = TestClient(main_mod.app)
+            resp = c.post("/churn/user_1")
+            assert resp.status_code == 401
+        finally:
+            main_mod.ML_API_KEY = original
+
+    def test_accepts_correct_key(self) -> None:
+        """When ML_API_KEY is set, correct X-API-Key header is accepted."""
+        import api.main as main_mod
+        original = main_mod.ML_API_KEY
+        try:
+            main_mod.ML_API_KEY = "test-secret"
+            c = TestClient(main_mod.app)
+            resp = c.post("/churn/user_1", headers={"X-API-Key": "test-secret"})
+            assert resp.status_code == 200
+        finally:
+            main_mod.ML_API_KEY = original
+
+    def test_rejects_wrong_key(self) -> None:
+        """Wrong API key is rejected."""
+        import api.main as main_mod
+        original = main_mod.ML_API_KEY
+        try:
+            main_mod.ML_API_KEY = "test-secret"
+            c = TestClient(main_mod.app)
+            resp = c.post("/churn/user_1", headers={"X-API-Key": "wrong-key"})
+            assert resp.status_code == 401
+        finally:
+            main_mod.ML_API_KEY = original

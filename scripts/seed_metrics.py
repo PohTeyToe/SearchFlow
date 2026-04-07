@@ -10,8 +10,11 @@ import time
 from pathlib import Path
 
 from prometheus_client import (
-    Counter, Gauge, Histogram, Summary,
-    start_http_server, REGISTRY,
+    Counter,
+    Gauge,
+    Histogram,
+    Summary,
+    start_http_server,
 )
 
 # Write seed targets file for Prometheus file_sd_configs
@@ -50,7 +53,7 @@ def main():
     airflow_dagrun = Counter("airflow_dagrun_duration_sum", "DAG run durations", ["dag_id", "state"])
     airflow_task = Counter("airflow_dag_task_duration_sum", "Task durations", ["dag_id", "task_id"])
     airflow_heartbeat = Gauge("airflow_scheduler_heartbeat", "Scheduler heartbeat")
-    airflow_sla = Counter("airflow_sla_missed", "SLA misses")
+    Counter("airflow_sla_missed", "SLA misses")
     airflow_running = Gauge("airflow_dagrun_running", "Running DAGs")
     airflow_pool_open = Gauge("airflow_pool_open_slots", "Open pool slots")
     airflow_pool_used = Gauge("airflow_pool_used_slots", "Used pool slots")

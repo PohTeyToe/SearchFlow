@@ -10,20 +10,20 @@ Implements a custom training loop with:
 - Saves best model checkpoint via torch.save()
 """
 
-import os
-import sys
 import json
-import math
-import random
 import logging
+import math
+import os
+import random
+import sys
 from pathlib import Path
-from typing import List, Tuple, Dict, Optional
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader, random_split
 from torch.optim import AdamW
+from torch.utils.data import DataLoader, Dataset, random_split
 
 try:
     from transformers import AutoModel, AutoTokenizer

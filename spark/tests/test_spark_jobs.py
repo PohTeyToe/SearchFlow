@@ -6,7 +6,6 @@ session timeout config, schema definitions) extracted from the PySpark jobs.
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Pure-Python implementations of the PySpark scoring/segmentation formulas
 # so we can validate the logic without SparkSession.

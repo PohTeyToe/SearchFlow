@@ -1,9 +1,11 @@
 """Tests for MLflow experiment tracking integration in training scripts."""
 
 import os
-import pytest
+from unittest.mock import patch
 
 import mlflow
+import pandas as pd
+import pytest
 from mlflow import MlflowClient
 
 
@@ -29,10 +31,40 @@ def model_path(tmp_path):
 class TestMLflowChurnIntegration:
     """Test MLflow tracking in churn model training."""
 
+    @pytest.fixture(autouse=True)
+    def _mock_hotel_data(self):
+        """Mock the hotel data loading to avoid needing the CSV in tests."""
+        import numpy as np
+        rng = np.random.RandomState(42)
+        n = 200
+        mock_df = pd.DataFrame({
+            "lead_time": rng.randint(0, 400, n),
+            "stays_in_weekend_nights": rng.randint(0, 4, n),
+            "stays_in_week_nights": rng.randint(0, 10, n),
+            "adr": rng.uniform(30, 300, n).round(2),
+            "is_repeated_guest": rng.randint(0, 2, n),
+            "previous_cancellations": rng.randint(0, 5, n),
+            "previous_bookings_not_canceled": rng.randint(0, 20, n),
+            "booking_changes": rng.randint(0, 5, n),
+            "total_of_special_requests": rng.randint(0, 5, n),
+            "days_in_waiting_list": rng.randint(0, 50, n),
+            "adults": rng.randint(1, 4, n),
+            "children": rng.choice([0, 0, 0, 1, 2], n).astype(float),
+            "babies": rng.choice([0, 0, 0, 0, 1], n),
+            "deposit_type": rng.choice(["No Deposit", "Non Refund", "Refundable"], n),
+            "market_segment": rng.choice(["Online TA", "Direct", "Corporate", "Groups"], n),
+            "customer_type": rng.choice(["Transient", "Contract", "Group", "Transient-Party"], n),
+            "is_canceled": rng.randint(0, 2, n),
+            "agent": rng.choice([0, 1, 14, 40], n).astype(float),
+            "company": np.zeros(n),
+        })
+        with patch("src.training.train_churn.load_hotel_bookings", return_value=mock_df):
+            yield
+
     def test_creates_experiment(self, mlflow_tmp, model_path):
         from src.training.train_churn import train_churn
 
-        train_churn(model_path=model_path, n_users=200)
+        train_churn(model_path=model_path)
 
         experiment = mlflow.get_experiment_by_name("churn-prediction")
         assert experiment is not None
@@ -40,7 +72,7 @@ class TestMLflowChurnIntegration:
     def test_logs_hyperparameters(self, mlflow_tmp, model_path):
         from src.training.train_churn import train_churn
 
-        train_churn(model_path=model_path, n_users=200)
+        train_churn(model_path=model_path)
 
         runs = mlflow.search_runs(experiment_names=["churn-prediction"])
         assert len(runs) >= 1
@@ -52,7 +84,7 @@ class TestMLflowChurnIntegration:
     def test_logs_evaluation_metrics(self, mlflow_tmp, model_path):
         from src.training.train_churn import train_churn
 
-        train_churn(model_path=model_path, n_users=200)
+        train_churn(model_path=model_path)
 
         runs = mlflow.search_runs(experiment_names=["churn-prediction"])
         run = runs.iloc[0]
@@ -62,7 +94,7 @@ class TestMLflowChurnIntegration:
     def test_logs_shap_artifact(self, mlflow_tmp, model_path):
         from src.training.train_churn import train_churn
 
-        train_churn(model_path=model_path, n_users=200)
+        train_churn(model_path=model_path)
 
         runs = mlflow.search_runs(experiment_names=["churn-prediction"])
         run_id = runs.iloc[0]["run_id"]
@@ -77,7 +109,7 @@ class TestMLflowChurnIntegration:
         from src.training.train_churn import train_churn
 
         os.environ["MLFLOW_TRACKING_URI"] = mlflow_tmp
-        train_churn(model_path=model_path, n_users=200)
+        train_churn(model_path=model_path)
         assert mlflow.get_tracking_uri().rstrip("/") == mlflow_tmp.rstrip("/")
         os.environ.pop("MLFLOW_TRACKING_URI", None)
 

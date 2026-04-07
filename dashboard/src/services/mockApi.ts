@@ -277,11 +277,11 @@ function seededRandom(seed: number): () => number {
 
 // Segment-specific feature biases: which features matter most for each segment
 const SEGMENT_BIASES: Record<string, number[]> = {
-    high_value:       [0.5, 0.3, 0.8, 2.5, 1.2, 0.6, 1.5, 2.0, 0.4, 1.8],
-    at_risk:          [1.8, 2.5, 1.2, 0.5, 0.8, 1.5, 0.6, 0.3, 2.0, 0.4],
-    new_user:         [2.0, 0.8, 0.5, 0.3, 1.5, 2.2, 0.6, 0.4, 1.2, 1.8],
-    regular:          [0.6, 1.5, 2.0, 1.8, 0.4, 0.8, 1.2, 0.5, 0.3, 2.2],
-    abandoned_search: [1.2, 1.8, 2.5, 0.4, 0.6, 0.8, 0.3, 0.5, 2.2, 1.5],
+    high_value:       [0.5, 0.3, 0.8, 2.5, 1.2, 0.6, 1.5, 2.0, 0.4, 1.8, 0.7, 1.0, 1.3, 0.9],
+    at_risk:          [1.8, 2.5, 1.2, 0.5, 0.8, 1.5, 0.6, 0.3, 2.0, 0.4, 1.1, 0.7, 0.9, 1.6],
+    new_user:         [2.0, 0.8, 0.5, 0.3, 1.5, 2.2, 0.6, 0.4, 1.2, 1.8, 0.9, 1.4, 0.8, 1.0],
+    regular:          [0.6, 1.5, 2.0, 1.8, 0.4, 0.8, 1.2, 0.5, 0.3, 2.2, 1.0, 0.6, 1.1, 0.7],
+    abandoned_search: [1.2, 1.8, 2.5, 0.4, 0.6, 0.8, 0.3, 0.5, 2.2, 1.5, 1.3, 0.9, 0.7, 1.1],
 };
 
 function generateShapValues(probability: number, seed: number, segment?: string): ShapFactor[] {

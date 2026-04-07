@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from .config import Config, COUNTRY_CODE_MAP, COUNTRY_DESTINATION_MAP
+from .config import COUNTRY_CODE_MAP, COUNTRY_DESTINATION_MAP, Config
 from .models import ClickEvent, ConversionEvent, SearchEvent
 
 

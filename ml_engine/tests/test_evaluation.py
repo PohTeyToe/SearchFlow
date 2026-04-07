@@ -8,14 +8,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.evaluation.metrics import (
+    coverage,
+    hit_rate,
+    mean_average_precision,
+    ndcg_at_k,
     precision_at_k,
     recall_at_k,
-    ndcg_at_k,
-    mean_average_precision,
-    hit_rate,
-    coverage,
 )
-
 
 # ------------------------------------------------------------------
 # precision@k

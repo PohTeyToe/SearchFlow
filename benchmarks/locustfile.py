@@ -14,8 +14,8 @@ Usage:
 """
 
 import random
-from locust import HttpUser, task, between, tag
 
+from locust import HttpUser, between, tag, task
 
 # Sample data for requests
 SAMPLE_USER_IDS = [f"user_{i}" for i in range(500)]

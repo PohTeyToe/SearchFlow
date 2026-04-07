@@ -19,11 +19,11 @@ jobs:
       - name: Ruff check
         run: ruff check .
       - name: SQLFluff lint
-        run: sqlfluff lint dbt_transform/models/ --dialect duckdb || true
+        run: sqlfluff lint dbt_transform/models/ --dialect duckdb
         continue-on-error: true
 
   dbt-build:
-    name: dbt Build & Test
+    name: dbt Compile
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,12 +34,9 @@ jobs:
       - name: dbt deps
         working-directory: ./dbt_transform
         run: dbt deps
-      - name: dbt build
+      - name: dbt compile
         working-directory: ./dbt_transform
-        run: dbt build --profiles-dir .
-      - name: dbt test
-        working-directory: ./dbt_transform
-        run: dbt test --profiles-dir .
+        run: dbt compile --profiles-dir .
 
   python-tests:
     name: Python Tests

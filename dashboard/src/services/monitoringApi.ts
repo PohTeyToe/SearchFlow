@@ -8,9 +8,9 @@ export interface DriftStatus {
 export interface PerformanceRecord {
   run_id: string;
   timestamp: string;
-  auc: number;
-  accuracy: number;
-  f1: number;
+  auc: number | null;
+  accuracy: number | null;
+  f1: number | null;
 }
 
 const ML_ENGINE_URL = import.meta.env.VITE_ML_ENGINE_URL || 'http://localhost:8000';
@@ -41,20 +41,22 @@ const MOCK_PERFORMANCE: PerformanceRecord[] = [
 export async function fetchDriftStatus(): Promise<DriftStatus> {
   try {
     const res = await fetch(`${ML_ENGINE_URL}/monitor/drift`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    if (res.ok) return await res.json();
   } catch {
-    return MOCK_DRIFT_STATUS;
+    // Backend unavailable — expected in frontend-only mode
   }
+  return MOCK_DRIFT_STATUS;
 }
 
 export async function fetchPerformanceHistory(): Promise<PerformanceRecord[]> {
   try {
     const res = await fetch(`${ML_ENGINE_URL}/monitor/performance`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    return data.length > 0 ? data : MOCK_PERFORMANCE;
+    if (res.ok) {
+      const data = await res.json();
+      if (data.length > 0) return data;
+    }
   } catch {
-    return MOCK_PERFORMANCE;
+    // Backend unavailable — expected in frontend-only mode
   }
+  return MOCK_PERFORMANCE;
 }

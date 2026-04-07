@@ -1,11 +1,8 @@
 """Tests for observability configuration files."""
 
-import json
 from pathlib import Path
 
-import pytest
 import yaml
-
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 

@@ -3,8 +3,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DASHBOARD_DIR = PROJECT_ROOT / "monitoring" / "grafana" / "provisioning" / "dashboards"
 EXPECTED_DASHBOARDS = [

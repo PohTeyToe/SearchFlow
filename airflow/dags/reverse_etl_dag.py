@@ -9,14 +9,13 @@ Syncs transformed data back to operational systems:
 Runs every 6 hours.
 """
 
-from datetime import datetime, timedelta
 import os
-import json
+from datetime import datetime, timedelta
+
+from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import PythonOperator
 
 from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.operators.empty import EmptyOperator
-
 
 default_args = {
     'owner': 'searchflow',
@@ -33,15 +32,15 @@ def sync_user_segments(**context):
     import duckdb
     import psycopg2
     from psycopg2.extras import execute_values
-    
+
     duckdb_path = os.getenv('DUCKDB_PATH', '/data/searchflow.duckdb')
-    
+
     # Extract from warehouse
     warehouse = duckdb.connect(duckdb_path, read_only=True)
-    
+
     try:
         segments = warehouse.execute("""
-            SELECT 
+            SELECT
                 user_id,
                 segment,
                 engagement_score,
@@ -60,12 +59,12 @@ def sync_user_segments(**context):
         segments = []
     finally:
         warehouse.close()
-    
+
     print(f"Extracted {len(segments)} segments from warehouse")
-    
+
     if not segments:
         return {'segments_synced': 0}
-    
+
     # Load to CRM (Postgres)
     postgres_config = {
         'host': os.getenv('POSTGRES_HOST', 'postgres'),
@@ -74,11 +73,11 @@ def sync_user_segments(**context):
         'user': os.getenv('POSTGRES_USER', 'airflow'),
         'password': os.getenv('POSTGRES_PASSWORD', 'airflow'),
     }
-    
+
     try:
         conn = psycopg2.connect(**postgres_config)
         cursor = conn.cursor()
-        
+
         # Ensure table exists
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS crm_user_segments (
@@ -94,13 +93,13 @@ def sync_user_segments(**context):
                 synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        
+
         # Upsert segments
         execute_values(
             cursor,
             """
-            INSERT INTO crm_user_segments 
-            (user_id, segment, engagement_score, lifetime_revenue, 
+            INSERT INTO crm_user_segments
+            (user_id, segment, engagement_score, lifetime_revenue,
              lifetime_conversions, primary_platform, primary_country,
              first_seen_at, last_seen_at, synced_at)
             VALUES %s
@@ -116,16 +115,16 @@ def sync_user_segments(**context):
                 row[5], row[6], row[7], row[8], datetime.utcnow()
             ) for row in segments]
         )
-        
+
         conn.commit()
         cursor.close()
         conn.close()
-        
+
         print(f"Synced {len(segments)} segments to CRM")
-        
+
     except Exception as e:
         print(f"Warning: Could not sync to Postgres: {e}")
-    
+
     return {'segments_synced': len(segments)}
 
 
@@ -133,17 +132,17 @@ def sync_recommendations_to_redis(**context):
     """Sync recommendation scores to Redis for real-time lookup."""
     import duckdb
     import redis
-    
+
     duckdb_path = os.getenv('DUCKDB_PATH', '/data/searchflow.duckdb')
     redis_host = os.getenv('REDIS_HOST', 'redis')
     redis_port = int(os.getenv('REDIS_PORT', '6379'))
-    
+
     # Extract recommendations from warehouse
     warehouse = duckdb.connect(duckdb_path, read_only=True)
-    
+
     try:
         recommendations = warehouse.execute("""
-            SELECT 
+            SELECT
                 user_id,
                 recommended_destination,
                 recommendation_score,
@@ -158,16 +157,16 @@ def sync_recommendations_to_redis(**context):
         recommendations = []
     finally:
         warehouse.close()
-    
+
     print(f"Extracted {len(recommendations)} recommendation records")
-    
+
     if not recommendations:
         return {'users_updated': 0}
-    
+
     try:
         redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
         redis_client.ping()
-        
+
         # Group recommendations by user
         users_data = {}
         for row in recommendations:
@@ -175,28 +174,28 @@ def sync_recommendations_to_redis(**context):
             if user_id not in users_data:
                 users_data[user_id] = {}
             users_data[user_id][destination] = float(score)
-        
+
         # Write to Redis using pipeline for efficiency
         pipe = redis_client.pipeline()
-        
+
         for user_id, destinations in users_data.items():
             key = f"searchflow:reco:{user_id}"
             pipe.delete(key)
             if destinations:
                 pipe.hset(key, mapping=destinations)
                 pipe.expire(key, 60 * 60 * 24 * 7)  # 7 day TTL
-        
+
         pipe.execute()
-        
+
         # Store sync timestamp
         redis_client.set(
             'searchflow:reco:last_sync',
             datetime.utcnow().isoformat()
         )
-        
+
         print(f"Synced recommendations for {len(users_data)} users")
         return {'users_updated': len(users_data)}
-        
+
     except Exception as e:
         print(f"Warning: Could not connect to Redis: {e}")
         return {'users_updated': 0, 'error': str(e)}
@@ -205,10 +204,10 @@ def sync_recommendations_to_redis(**context):
 def log_reverse_etl_metrics(**context):
     """Log reverse-ETL sync metrics."""
     ti = context['task_instance']
-    
+
     segments_result = ti.xcom_pull(task_ids='sync_user_segments') or {}
     reco_result = ti.xcom_pull(task_ids='sync_recommendations') or {}
-    
+
     print(f"""
     ========================================
     Reverse-ETL Complete
@@ -229,25 +228,25 @@ with DAG(
     tags=['reverse-etl', 'searchflow'],
     max_active_runs=1,
 ) as dag:
-    
+
     start = EmptyOperator(task_id='start')
-    
+
     sync_segments = PythonOperator(
         task_id='sync_user_segments',
         python_callable=sync_user_segments,
     )
-    
+
     sync_recos = PythonOperator(
         task_id='sync_recommendations',
         python_callable=sync_recommendations_to_redis,
     )
-    
+
     log_metrics = PythonOperator(
         task_id='log_metrics',
         python_callable=log_reverse_etl_metrics,
     )
-    
+
     end = EmptyOperator(task_id='end')
-    
+
     # Syncs run in parallel, then log metrics
     start >> [sync_segments, sync_recos] >> log_metrics >> end

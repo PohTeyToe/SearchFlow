@@ -7,20 +7,18 @@ metrics (duration, page views, bounce rate), builds a conversion funnel,
 and writes results to Parquet files (or PostgreSQL via JDBC).
 """
 
-import os
-import sys
 import logging
+import os
 from typing import Optional
 
-from pyspark.sql import SparkSession, DataFrame, Window
+from pyspark.sql import DataFrame, SparkSession, Window
 from pyspark.sql import functions as F
 from pyspark.sql.types import (
-    StructType,
-    StructField,
-    StringType,
-    IntegerType,
     DoubleType,
-    TimestampType,
+    IntegerType,
+    StringType,
+    StructField,
+    StructType,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

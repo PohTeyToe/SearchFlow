@@ -15,7 +15,6 @@ if _component not in sys.path:
 from src.config import Config, load_hotel_distributions
 from src.generator import EventGenerator
 
-
 # ------------------------------------------------------------------
 # Fixtures
 # ------------------------------------------------------------------

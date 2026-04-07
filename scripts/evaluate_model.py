@@ -7,10 +7,8 @@ Exit 0 if AUC-ROC >= 0.83, exit 1 otherwise.
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_auc_score, accuracy_score, precision_score, recall_score, f1_score
 
 # Add ml_engine/src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "ml_engine" / "src"))
@@ -40,17 +38,16 @@ def main():
 
     # Train model with same hyperparameters as train_churn.py
     predictor = ChurnPredictor()
-    predictor.train(X_train, y_train)
+    predictor.fit(X_train, y_train, eval_set=(X_test, y_test))
 
-    # Evaluate
-    y_prob = predictor.model.predict_proba(X_test)[:, 1]
-    y_pred = predictor.model.predict(X_test)
+    # Evaluate using the predictor's built-in method (handles scaling)
+    metrics = predictor.evaluate(X_test, y_test)
 
-    auc = roc_auc_score(y_test, y_prob)
-    acc = accuracy_score(y_test, y_pred)
-    prec = precision_score(y_test, y_pred)
-    rec = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
+    auc = metrics.auc
+    acc = metrics.accuracy
+    prec = metrics.precision
+    rec = metrics.recall
+    f1 = metrics.f1
 
     print("=" * 48)
     print("       Model Evaluation Results")

@@ -1,0 +1,49 @@
+mappings:
+  # DAG run duration
+  - match: "airflow.dagrun.duration.*.*"
+    name: "airflow_dagrun_duration"
+    labels:
+      dag_id: "$1"
+      state: "$2"
+    timer_type: summary
+
+  # DAG task duration
+  - match: "airflow.dag.*.*.duration"
+    name: "airflow_dag_task_duration"
+    labels:
+      dag_id: "$1"
+      task_id: "$2"
+    timer_type: summary
+
+  # Scheduler heartbeat
+  - match: "airflow.scheduler_heartbeat"
+    name: "airflow_scheduler_heartbeat"
+
+  # SLA misses
+  - match: "airflow.sla_missed"
+    name: "airflow_sla_missed"
+
+  # DAG runs currently running
+  - match: "airflow.dagrun.*.running"
+    name: "airflow_dagrun_running"
+    labels:
+      dag_id: "$1"
+
+  # Pool slots
+  - match: "airflow.pool.open_slots.*"
+    name: "airflow_pool_open_slots"
+    labels:
+      pool: "$1"
+
+  - match: "airflow.pool.used_slots.*"
+    name: "airflow_pool_used_slots"
+    labels:
+      pool: "$1"
+
+  # DAG processing time
+  - match: "airflow.dag_processing.total_parse_time"
+    name: "airflow_dag_processing_total_parse_time"
+
+  # Catch-all for remaining airflow metrics
+  - match: "airflow.*"
+    name: "airflow_${1}"

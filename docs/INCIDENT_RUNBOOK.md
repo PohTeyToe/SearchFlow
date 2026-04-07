@@ -100,14 +100,14 @@ Escalate if lag does not decrease within 15 minutes of remediation, if Kafka bro
 
 4. **Check upstream data quality.** Run dbt source freshness tests and inspect recent data:
    ```bash
-   docker exec searchflow-dbt dbt source freshness
-   docker exec searchflow-dbt dbt test --select tag:data_quality
+   docker exec searchflow-airflow-scheduler dbt source freshness
+   docker exec searchflow-airflow-scheduler dbt test --select tag:data_quality
    ```
    Look for null spikes, cardinality shifts, or schema changes in staging models.
 
 5. **Trigger retraining.** If drift is confirmed and data quality is acceptable, manually trigger the training DAG:
    ```bash
-   docker exec searchflow-airflow airflow dags trigger training_dag
+   docker exec searchflow-airflow-scheduler airflow dags trigger training_dag
    ```
    Monitor the run in the Airflow UI. After completion, verify the new model is registered in MLflow and the accuracy has recovered.
 
@@ -158,7 +158,7 @@ Escalate if retraining does not recover accuracy above 0.80, if drift is caused 
 
 5. **Clear and retry.** If the root cause is resolved, clear the failed task in Airflow to trigger a retry:
    ```bash
-   docker exec searchflow-airflow airflow tasks clear <dag_id> -t <task_id> -s <start_date> -e <end_date> --yes
+   docker exec searchflow-airflow-scheduler airflow tasks clear <dag_id> -t <task_id> -s <start_date> -e <end_date> --yes
    ```
 
 6. **Verify recovery.** Confirm the task completes successfully and downstream DAGs resume their normal schedule. Check the Pipeline Health dashboard for the gap to close.
@@ -246,7 +246,7 @@ Escalate if error rate remains above 5% after container restart, if the root cau
 
 1. **Confirm staleness.** Run dbt source freshness manually:
    ```bash
-   docker exec searchflow-dbt dbt source freshness --output json
+   docker exec searchflow-airflow-scheduler dbt source freshness --output json
    ```
    Check which sources are stale and by how much. Cross-reference with the Pipeline Health dashboard in Grafana.
 
@@ -275,7 +275,7 @@ Escalate if error rate remains above 5% after container restart, if the root cau
 
 6. **Backfill if needed.** If there is a significant data gap, trigger a backfill:
    ```bash
-   docker exec searchflow-airflow airflow dags backfill ingestion_dag -s <start_date> -e <end_date>
+   docker exec searchflow-airflow-scheduler airflow dags backfill ingestion_dag -s <start_date> -e <end_date>
    ```
    After backfill, rerun dbt and verify freshness returns to normal.
 
@@ -302,8 +302,8 @@ Escalate if data staleness exceeds 1 hour for ingestion sources, 4 hours for tra
 | `curl -s http://localhost:8000/monitor/drift` | Check current drift status |
 | `curl -s http://localhost:8000/monitor/performance` | Check model performance history |
 | `curl -s http://localhost:9090/api/v1/alerts` | List active Prometheus alerts |
-| `docker exec searchflow-dbt dbt source freshness` | Run dbt source freshness checks |
-| `docker exec searchflow-dbt dbt test` | Run all dbt tests |
-| `docker exec searchflow-airflow airflow dags list` | List all registered DAGs |
-| `docker exec searchflow-airflow airflow dags trigger <dag_id>` | Manually trigger a DAG run |
+| `docker exec searchflow-airflow-scheduler dbt source freshness` | Run dbt source freshness checks |
+| `docker exec searchflow-airflow-scheduler dbt test` | Run all dbt tests |
+| `docker exec searchflow-airflow-scheduler airflow dags list` | List all registered DAGs |
+| `docker exec searchflow-airflow-scheduler airflow dags trigger <dag_id>` | Manually trigger a DAG run |
 | `docker exec searchflow-kafka kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group searchflow-consumer-group --describe` | Describe consumer group lag per partition |

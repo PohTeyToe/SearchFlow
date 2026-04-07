@@ -6,13 +6,10 @@ Injects anomalies into a temporary DuckDB database, runs validation checks,
 and generates an incident timeline showing which checks caught which issues.
 """
 
-import json
 import os
 import shutil
-import sys
 import tempfile
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import duckdb
 
@@ -249,7 +246,7 @@ def main():
     finally:
         # Cleanup
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        print(f"\nCleanup: temporary database removed")
+        print("\nCleanup: temporary database removed")
 
 
 if __name__ == "__main__":

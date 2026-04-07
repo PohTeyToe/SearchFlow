@@ -4,3 +4,7 @@ target-version = "py311"
 [lint]
 select = ["E", "F", "W", "I"]
 ignore = ["E501"]
+
+[lint.per-file-ignores]
+"event_generator/tests/test_distributions.py" = ["E402"]
+"spark/tests/test_spark_jobs.py" = ["F401"]

@@ -10,13 +10,12 @@ import json
 import os
 import sys
 from datetime import datetime, timedelta
-from pathlib import Path
 
-from airflow import DAG
-from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
+from airflow import DAG
 
 default_args = {
     "owner": "ml-team",
@@ -72,8 +71,9 @@ def _check_drift(**context):
     # Log to MLflow
     try:
         detector.log_to_mlflow(result, report_path=report_path)
-    except Exception:
-        pass  # MLflow may not be available
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("MLflow logging failed: %s", e)
 
     context["ti"].xcom_push(key="drift_result", value=result_dict)
 

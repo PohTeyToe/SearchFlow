@@ -9,13 +9,12 @@ import json
 import os
 import sys
 import tempfile
-import numpy as np
-import pandas as pd
 from pathlib import Path
-from sklearn.model_selection import train_test_split
 
 import mlflow
 import mlflow.xgboost
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -126,8 +125,8 @@ def train_churn(
 
         # Log SHAP summary plot
         try:
-            import shap
             import matplotlib
+            import shap
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
 
@@ -177,7 +176,7 @@ def train_churn(
         with open(os.path.join(results_dir, "churn_results.json"), "w") as f:
             json.dump(results, f, indent=2)
 
-        print(f"\n  Churn model v2.0 trained successfully!")
+        print("\n  Churn model v2.0 trained successfully!")
         print(f"  AUC-ROC: {metrics.auc:.4f}")
 
     return predictor, metrics

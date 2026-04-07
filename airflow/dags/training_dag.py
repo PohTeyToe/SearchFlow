@@ -2,16 +2,17 @@
 SearchFlow Model Training DAG
 
 Orchestrates weekly retraining of all ML models (churn, sentiment,
-recommendation) with MLflow experiment tracking. Runs training scripts
-inside the ml-engine container via docker exec.
+recommendation) with MLflow experiment tracking.
 
 Schedule: Weekly on Sundays at midnight (0 0 * * 0)
 """
 
+import sys
 from datetime import datetime, timedelta
 
+from airflow.operators.python import PythonOperator
+
 from airflow import DAG
-from airflow.operators.bash import BashOperator
 
 default_args = {
     "owner": "searchflow",
@@ -22,6 +23,34 @@ default_args = {
     "retry_delay": timedelta(minutes=5),
     "sla": timedelta(minutes=30),
 }
+
+
+def _train_churn():
+    """Train churn prediction model with MLflow tracking."""
+    import os
+    os.environ.setdefault("MLFLOW_TRACKING_URI", "http://mlflow:5000")
+    sys.path.insert(0, "/opt/airflow/ml_engine")
+    from src.training.train_churn import train_churn
+    train_churn()
+
+
+def _train_sentiment():
+    """Train sentiment analysis model with MLflow tracking."""
+    import os
+    os.environ.setdefault("MLFLOW_TRACKING_URI", "http://mlflow:5000")
+    sys.path.insert(0, "/opt/airflow/ml_engine")
+    from src.training.train_sentiment import train_sentiment
+    train_sentiment()
+
+
+def _train_recommender():
+    """Train recommendation model with MLflow tracking."""
+    import os
+    os.environ.setdefault("MLFLOW_TRACKING_URI", "http://mlflow:5000")
+    sys.path.insert(0, "/opt/airflow/ml_engine")
+    from src.training.train_recommender import train_recommender
+    train_recommender()
+
 
 with DAG(
     dag_id="searchflow_training",
@@ -34,28 +63,19 @@ with DAG(
     tags=["training", "mlflow", "searchflow"],
 ) as dag:
 
-    train_churn = BashOperator(
+    train_churn = PythonOperator(
         task_id="train_churn",
-        bash_command=(
-            "docker exec -e MLFLOW_TRACKING_URI=http://mlflow:5000 "
-            "searchflow-ml-engine python -m src.training.train_churn"
-        ),
+        python_callable=_train_churn,
     )
 
-    train_sentiment = BashOperator(
+    train_sentiment = PythonOperator(
         task_id="train_sentiment",
-        bash_command=(
-            "docker exec -e MLFLOW_TRACKING_URI=http://mlflow:5000 "
-            "searchflow-ml-engine python -m src.training.train_sentiment"
-        ),
+        python_callable=_train_sentiment,
     )
 
-    train_recommender = BashOperator(
+    train_recommender = PythonOperator(
         task_id="train_recommender",
-        bash_command=(
-            "docker exec -e MLFLOW_TRACKING_URI=http://mlflow:5000 "
-            "searchflow-ml-engine python -m src.training.train_recommender"
-        ),
+        python_callable=_train_recommender,
     )
 
     train_churn >> train_sentiment >> train_recommender

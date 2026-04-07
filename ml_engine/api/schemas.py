@@ -2,10 +2,10 @@
 Pydantic schemas for ML API requests and responses.
 """
 
-from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
 from enum import Enum
+from typing import Dict, List, Optional
 
+from pydantic import BaseModel, Field
 
 # ============================================
 # Enums

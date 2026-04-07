@@ -9,7 +9,7 @@ Compatible with Evidently 0.7+ API.
 
 import json
 import os
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Optional
 

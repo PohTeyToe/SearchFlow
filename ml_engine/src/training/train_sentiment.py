@@ -12,18 +12,17 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score
-
 import mlflow
 import mlflow.sklearn
+import pandas as pd
+from sklearn.metrics import f1_score
+from sklearn.model_selection import train_test_split
 
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.models.sentiment import SentimentAnalyzer, TfidfSentimentModel
 from src.data.generate_reviews import generate_dataset
+from src.models.sentiment import SentimentAnalyzer
 
 
 def load_reviews(data_dir: str) -> Optional[pd.DataFrame]:
@@ -87,11 +86,11 @@ def train_sentiment(
         print(f"  No review CSVs found in {data_dir}, using synthetic data")
         texts, labels = generate_dataset(n_samples)
         data_source = "synthetic"
-    
+
     print(f"  Positive: {labels.count('positive'):,}")
     print(f"  Negative: {labels.count('negative'):,}")
     print(f"  Neutral: {labels.count('neutral'):,}")
-    
+
     # Split data
     print("\n[2/4] Splitting data...")
     train_texts, test_texts, train_labels, test_labels = train_test_split(
@@ -99,7 +98,7 @@ def train_sentiment(
     )
     print(f"  Train: {len(train_texts):,}")
     print(f"  Test: {len(test_texts):,}")
-    
+
     # Train model with MLflow tracking
     print(f"\n[3/4] Training {'BERT' if use_bert else 'TF-IDF'} model...")
 
@@ -188,7 +187,7 @@ def train_sentiment(
         with open(os.path.join(results_dir, "sentiment_results.json"), "w") as f:
             json.dump(results, f, indent=2)
 
-        print(f"\n  Sentiment model trained successfully!")
+        print("\n  Sentiment model trained successfully!")
         print(f"   Classification Accuracy: {accuracy:.2%}")
 
         # Show sample predictions
@@ -208,7 +207,7 @@ def train_sentiment(
 
 if __name__ == "__main__":
     import argparse
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--samples", type=int, default=25000)
     parser.add_argument("--use-bert", action="store_true")

@@ -12,7 +12,6 @@ if _component not in sys.path:
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-
 from src.main import app  # noqa: E402
 
 

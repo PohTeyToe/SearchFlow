@@ -1,12 +1,10 @@
 """Configuration for the event generator."""
 
-import math
 import os
 from dataclasses import dataclass, field
 from typing import Optional
 
 import pandas as pd
-
 
 # ── Country code mapping (ISO 3166 alpha-3 → alpha-2) ───────────────
 

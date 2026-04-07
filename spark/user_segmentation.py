@@ -6,11 +6,11 @@ assigns each user to a segment: high_value, at_risk, new_user,
 regular, or abandoned_search.  Outputs segment assignments as Parquet.
 """
 
-import os
 import logging
+import os
 from typing import Optional
 
-from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

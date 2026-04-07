@@ -2,7 +2,6 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import numpy as np
 import pandas as pd
@@ -11,6 +10,12 @@ import pytest
 # Ensure ml_engine is importable
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.models.churn import (
+    ChurnModelMetrics,
+    ChurnPrediction,
+    ChurnPredictor,
+    engineer_features,
+)
 from src.models.recommendation import (
     CollaborativeFilter,
     ContentBasedFilter,
@@ -18,17 +23,9 @@ from src.models.recommendation import (
     RecommendationResult,
 )
 from src.models.sentiment import (
-    TfidfSentimentModel,
-    SentimentAnalyzer,
     SentimentResult,
+    TfidfSentimentModel,
 )
-from src.models.churn import (
-    ChurnPredictor,
-    ChurnPrediction,
-    ChurnModelMetrics,
-    engineer_features,
-)
-
 
 # ------------------------------------------------------------------
 # Fixtures
