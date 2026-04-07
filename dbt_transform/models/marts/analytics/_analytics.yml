@@ -5,59 +5,114 @@ models:
     description: |
       Daily funnel metrics aggregated by key dimensions.
       Primary analytics fact table for search performance analysis.
-    
+    config:
+      contract:
+        enforced: true
+
     columns:
       - name: funnel_date
+        data_type: DATE
         description: "Date of the funnel data"
         tests:
           - not_null
-      
+
+      - name: platform
+        data_type: VARCHAR
+
+      - name: device_type
+        data_type: VARCHAR
+
+      - name: geo_country
+        data_type: VARCHAR
+
+      - name: utm_source
+        data_type: VARCHAR
+
+      - name: utm_campaign
+        data_type: VARCHAR
+
       - name: total_sessions
+        data_type: BIGINT
         description: "Number of unique sessions"
         tests:
           - not_null
           - dbt_utils.accepted_range:
               min_value: 0
-      
+
       - name: total_searches
+        data_type: BIGINT
         description: "Total search events"
         tests:
           - not_null
           - dbt_utils.accepted_range:
               min_value: 0
-      
+
       - name: total_clicks
+        data_type: BIGINT
         description: "Total click events"
         tests:
           - dbt_utils.accepted_range:
               min_value: 0
-      
+
       - name: total_conversions
+        data_type: BIGINT
         description: "Total conversions"
         tests:
           - dbt_utils.accepted_range:
               min_value: 0
-      
+
+      - name: total_revenue
+        data_type: DOUBLE
+
+      - name: total_commission
+        data_type: DOUBLE
+
       - name: click_through_rate
+        data_type: DOUBLE
         description: "Clicks / Searches"
         tests:
           - dbt_utils.accepted_range:
               min_value: 0
               max_value: 1
-      
+
       - name: conversion_rate
+        data_type: DOUBLE
         description: "Conversions / Clicks"
         tests:
           - dbt_utils.accepted_range:
               min_value: 0
               max_value: 1
-    
+
+      - name: search_to_conversion_rate
+        data_type: DOUBLE
+
+      - name: avg_session_duration_minutes
+        data_type: DOUBLE
+
+      - name: avg_click_position
+        data_type: DOUBLE
+
+      - name: avg_queries_per_session
+        data_type: DOUBLE
+
+      - name: avg_order_value
+        data_type: DOUBLE
+
+      - name: revenue_per_session
+        data_type: DOUBLE
+
+      - name: converted_sessions
+        data_type: BIGINT
+
+      - name: engaged_sessions
+        data_type: BIGINT
+
+      - name: bounced_sessions
+        data_type: BIGINT
+
     tests:
-      # Funnel logic: clicks can't exceed searches
       - dbt_utils.expression_is_true:
           expression: "total_clicks <= total_searches * 5"
-      
-      # Funnel logic: conversions can't exceed clicks
       - dbt_utils.expression_is_true:
           expression: "total_conversions <= total_clicks"
 
@@ -65,35 +120,91 @@ models:
     description: |
       User dimension with lifetime metrics.
       Powers user segmentation, LTV analysis, and cohort analysis.
-    
+    config:
+      contract:
+        enforced: true
+
     columns:
       - name: user_id
+        data_type: VARCHAR
         description: "Unique user identifier"
         tests:
           - unique
           - not_null
-      
+
       - name: first_seen_at
+        data_type: TIMESTAMP
         description: "First activity timestamp"
         tests:
           - not_null
-      
+
+      - name: last_seen_at
+        data_type: TIMESTAMP
+
+      - name: days_since_last_seen
+        data_type: DOUBLE
+
+      - name: account_age_days
+        data_type: DOUBLE
+
       - name: total_sessions
+        data_type: BIGINT
         description: "Lifetime session count"
         tests:
           - not_null
           - dbt_utils.accepted_range:
               min_value: 1
-      
+
+      - name: lifetime_searches
+        data_type: BIGINT
+
+      - name: lifetime_clicks
+        data_type: BIGINT
+
+      - name: lifetime_conversions
+        data_type: BIGINT
+
       - name: lifetime_revenue
+        data_type: DOUBLE
         description: "Total revenue from this user"
         tests:
           - dbt_utils.accepted_range:
               min_value: 0
-      
-      - name: lifetime_ctr
+
+      - name: lifetime_commission
+        data_type: DOUBLE
+
+      - name: primary_platform
+        data_type: VARCHAR
+
+      - name: primary_device
+        data_type: VARCHAR
+
+      - name: primary_country
+        data_type: VARCHAR
+
+      - name: avg_session_duration
+        data_type: DOUBLE
+
+      - name: avg_ctr
+        data_type: DOUBLE
         description: "Lifetime click-through rate"
         tests:
           - dbt_utils.accepted_range:
               min_value: 0
               max_value: 1
+
+      - name: avg_conversion_rate
+        data_type: DOUBLE
+
+      - name: lifetime_ctr
+        data_type: DOUBLE
+
+      - name: lifetime_conversion_rate
+        data_type: DOUBLE
+
+      - name: revenue_per_session
+        data_type: DOUBLE
+
+      - name: avg_order_value
+        data_type: DOUBLE

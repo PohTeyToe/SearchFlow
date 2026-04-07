@@ -25,7 +25,7 @@ vi.mock('../services/mockApi', () => ({
                 churnPrediction: {
                     probability: 0.87,
                     riskLevel: 'high',
-                    topFactors: [{ feature: 'days_since_last_activity', featureLabel: 'Days inactive', value: 0.23, direction: 'increases' }],
+                    topFactors: [{ feature: 'lead_time', featureLabel: 'Lead time (days)', value: 0.23, direction: 'increases' }],
                     baseValue: 0.35,
                 },
             },
@@ -36,7 +36,7 @@ vi.mock('../services/mockApi', () => ({
                 churnPrediction: {
                     probability: 0.45,
                     riskLevel: 'medium',
-                    topFactors: [{ feature: 'sessions_7d', featureLabel: 'Sessions (7d)', value: 0.08, direction: 'increases' }],
+                    topFactors: [{ feature: 'deposit_type_encoded', featureLabel: 'Deposit type', value: 0.08, direction: 'increases' }],
                     baseValue: 0.35,
                 },
             },
@@ -88,7 +88,7 @@ describe('UsersPage', () => {
     it('shows the top SHAP factor for each user', async () => {
         renderWithProviders(<UsersPage />);
         await screen.findByText('user_1001');
-        expect(screen.getByText('Lifetime value ($)')).toBeInTheDocument();
-        expect(screen.getByText('Days inactive')).toBeInTheDocument();
+        expect(screen.getByText('Lead time (days)')).toBeInTheDocument();
+        expect(screen.getByText('Deposit type')).toBeInTheDocument();
     });
 });

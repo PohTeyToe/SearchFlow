@@ -30,9 +30,9 @@ def mock_churn_response():
         "churn_probability": 0.45,
         "risk_level": "medium",
         "top_factors": [
-            {"feature": "days_since_last_activity", "impact": 0.15, "direction": "increases", "value": 45},
-            {"feature": "sessions_7d", "impact": -0.12, "direction": "decreases", "value": 0},
-            {"feature": "conversions_total", "impact": -0.08, "direction": "decreases", "value": 0},
+            {"feature": "lead_time", "impact": 0.15, "direction": "increases", "value": 120},
+            {"feature": "deposit_type_encoded", "impact": 0.12, "direction": "increases", "value": 1},
+            {"feature": "adr", "impact": -0.08, "direction": "decreases", "value": 85.0},
         ],
         "cached": False,
     }

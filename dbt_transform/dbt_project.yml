@@ -57,6 +57,11 @@ models:
         +schema: marketing
         +tags: ['marketing', 'reverse-etl']
 
+      ml:
+        +schema: ml
+        +materialized: table
+        +tags: ['ml', 'feature-store']
+
 # Test configurations
 tests:
   searchflow:

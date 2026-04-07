@@ -1,13 +1,15 @@
 """
 Train the hybrid recommendation model.
 
-Loads user interaction data from DuckDB, trains collaborative + content-based
-models, and evaluates precision@10.
+Loads user interaction data from DuckDB or Booking.com trip sequences,
+trains collaborative + content-based models, and evaluates precision@10 + NDCG@10.
 """
 
 import json
 import os
 import sys
+from typing import Optional
+
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -20,6 +22,49 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.models.recommendation import HybridRecommender
 from src.evaluation.metrics import precision_at_k, recall_at_k, ndcg_at_k
+
+
+def load_booking_com_trips(data_dir: str) -> Optional[pd.DataFrame]:
+    """Load Booking.com MDT trip sequences and convert to interaction pairs.
+
+    Looks for a train_set.csv in the Booking.com dataset clone directory.
+    Returns DataFrame with user_id, item_id, rating columns, or None.
+    """
+    # Check for Booking.com dataset directory structure
+    for candidate in [
+        os.path.join(data_dir, "booking_com", "data", "train_set.csv"),
+        os.path.join(data_dir, "booking_com", "train_set.csv"),
+    ]:
+        if os.path.exists(candidate):
+            df = pd.read_csv(candidate)
+            # Booking.com dataset has utrip_id, city_id columns
+            if "utrip_id" in df.columns and "city_id" in df.columns:
+                rows = []
+                for utrip, group in df.groupby("utrip_id"):
+                    user_id = str(utrip)
+                    for city in group["city_id"].unique():
+                        rows.append({
+                            "user_id": user_id,
+                            "item_id": str(city),
+                            "rating": 3.0,  # implicit positive signal
+                        })
+                return pd.DataFrame(rows)
+
+    # Also check for a simple trips.csv format
+    trip_file = os.path.join(data_dir, "trips.csv")
+    if os.path.exists(trip_file):
+        df = pd.read_csv(trip_file)
+        if {"user_id", "city_id"}.issubset(df.columns):
+            rows = []
+            for _, row in df.iterrows():
+                rows.append({
+                    "user_id": str(row["user_id"]),
+                    "item_id": str(row["city_id"]),
+                    "rating": 3.0,
+                })
+            return pd.DataFrame(rows)
+
+    return None
 
 
 def load_interaction_data(duckdb_path: str) -> pd.DataFrame:
@@ -114,10 +159,10 @@ def generate_item_features(items: list) -> pd.DataFrame:
 
 def train_recommender(
     duckdb_path: str = "/data/searchflow.duckdb",
-    model_path: str = "./models/recommendation"
+    model_path: str = "./models/recommendation",
+    data_dir: str = "data/raw",
 ):
     """Train and save the recommendation model."""
-    # Configure MLflow
     tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment("recommendations")
@@ -126,14 +171,25 @@ def train_recommender(
     print("=" * 50)
     print("Training Hybrid Recommendation Engine")
     print("=" * 50)
-    
-    # Load data
+
+    # Try real data sources in order, fall back to synthetic
     print("\n[1/4] Loading interaction data...")
-    try:
-        interactions_df = load_interaction_data(duckdb_path)
-    except:
-        print("  Using synthetic data (warehouse not available)")
-        interactions_df = generate_synthetic_interactions()
+    data_source = "synthetic"
+
+    # Try Booking.com dataset first
+    booking_data = load_booking_com_trips(data_dir)
+    if booking_data is not None:
+        interactions_df = booking_data
+        data_source = "booking_com"
+        print(f"  Loaded Booking.com trip data ({len(interactions_df):,} interactions)")
+    else:
+        # Try DuckDB warehouse
+        try:
+            interactions_df = load_interaction_data(duckdb_path)
+            data_source = "warehouse"
+        except Exception:
+            print("  Using synthetic data (no real data available)")
+            interactions_df = generate_synthetic_interactions()
     
     print(f"  Loaded {len(interactions_df):,} interactions")
     print(f"  Users: {interactions_df['user_id'].nunique():,}")
@@ -170,6 +226,7 @@ def train_recommender(
 
         precisions = []
         recalls = []
+        ndcgs = []
 
         for user_id in list(test_users)[:100]:  # Sample for speed
             actual = test_df[
@@ -186,20 +243,24 @@ def train_recommender(
             hits = len(set(predicted) & set(actual))
             precisions.append(hits / 10)
             recalls.append(hits / len(actual) if actual else 0)
+            ndcgs.append(ndcg_at_k(predicted, actual, k=10))
 
         avg_precision = np.mean(precisions) if precisions else 0
         avg_recall = np.mean(recalls) if recalls else 0
+        avg_ndcg = np.mean(ndcgs) if ndcgs else 0
         precision_10 = avg_precision
 
         # Log metrics and params
         mlflow.log_metrics({
             "precision_at_10": float(precision_10),
             "recall_at_10": float(avg_recall),
+            "ndcg_at_10": float(avg_ndcg),
         })
         mlflow.log_params({
             "n_factors": 50,
             "collab_weight": 0.6,
             "content_weight": 0.4,
+            "data_source": data_source,
             "n_users_train": len(train_users),
             "n_users_test": len(test_users),
             "n_interactions": len(interactions_df),
@@ -223,12 +284,14 @@ def train_recommender(
         os.makedirs(results_dir, exist_ok=True)
         results = {
             "model": "hybrid_cf_cb",
+            "data_source": data_source,
             "n_users_train": len(train_users),
             "n_users_test": len(test_users),
             "n_interactions": len(interactions_df),
             "n_items": int(interactions_df["item_id"].nunique()),
             "precision_at_10": round(float(precision_10), 4),
             "recall_at_10": round(float(avg_recall), 4),
+            "ndcg_at_10": round(float(avg_ndcg), 4),
             "n_factors": 50,
             "collab_weight": 0.6,
             "content_weight": 0.4,
@@ -248,6 +311,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--duckdb-path", default="/data/searchflow.duckdb")
     parser.add_argument("--model-path", default="./models/recommendation")
+    parser.add_argument("--data-dir", default="data/raw")
     args = parser.parse_args()
-    
-    train_recommender(args.duckdb_path, args.model_path)
+
+    train_recommender(args.duckdb_path, args.model_path, args.data_dir)

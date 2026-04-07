@@ -149,16 +149,22 @@ class TestChurnEndpoint:
 # ------------------------------------------------------------------
 
 
-class TestMetricsEndpoint:
-    def test_metrics_returns_200(self, client: TestClient) -> None:
-        resp = client.get("/metrics")
+class TestModelMetricsEndpoint:
+    def test_model_metrics_returns_200(self, client: TestClient) -> None:
+        resp = client.get("/model-metrics")
         assert resp.status_code == 200
 
-    def test_metrics_has_sections(self, client: TestClient) -> None:
-        data = client.get("/metrics").json()
+    def test_model_metrics_has_sections(self, client: TestClient) -> None:
+        data = client.get("/model-metrics").json()
         assert "recommendation" in data
         assert "sentiment" in data
         assert "churn" in data
+
+    def test_old_metrics_endpoint_gone(self, client: TestClient) -> None:
+        """Verify /metrics no longer exists after rename to /model-metrics."""
+        resp = client.get("/metrics")
+        # Prometheus instrumentator may expose /metrics/prometheus but /metrics itself should 404
+        assert resp.status_code in (404, 405)
 
 
 # ------------------------------------------------------------------
@@ -203,20 +209,20 @@ class TestEdgeCases:
     def test_churn_with_explicit_features(self, client: TestClient) -> None:
         """Passing explicit features should work in mock mode."""
         features = {
-            "sessions_7d": 0,
-            "sessions_30d": 2,
-            "sessions_90d": 10,
-            "searches_total": 15,
-            "clicks_total": 5,
-            "conversions_total": 0,
-            "search_to_click_ratio": 0.33,
-            "click_to_conversion_ratio": 0.0,
-            "avg_session_duration_mins": 4.0,
-            "days_since_last_activity": 55,
-            "lifetime_value": 0.0,
-            "unique_destinations_searched": 2,
-            "mobile_session_ratio": 1.0,
-            "weekend_session_ratio": 0.5,
+            "lead_time": 120,
+            "total_stay_nights": 5,
+            "adr": 95.0,
+            "is_repeated_guest": 0,
+            "previous_cancellations": 1,
+            "previous_bookings_not_canceled": 0,
+            "booking_changes": 0,
+            "total_of_special_requests": 1,
+            "days_in_waiting_list": 0,
+            "guests_total": 2,
+            "deposit_type_encoded": 0,
+            "market_segment_encoded": 6,
+            "customer_type_encoded": 2,
+            "weekend_stay_ratio": 0.4,
         }
         resp = client.post("/churn/user_99", json={"features": features})
         assert resp.status_code == 200

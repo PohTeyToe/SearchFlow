@@ -3,11 +3,11 @@ import { render, screen } from '@testing-library/react';
 import { ShapWaterfall } from '../components/users/ShapWaterfall';
 
 const mockShapValues = [
-    { feature: 'days_since_last_activity', featureLabel: 'Days inactive', value: 0.23, direction: 'increases' as const },
-    { feature: 'lifetime_value', featureLabel: 'Lifetime value ($)', value: -0.15, direction: 'decreases' as const },
-    { feature: 'sessions_7d', featureLabel: 'Sessions (7d)', value: -0.08, direction: 'decreases' as const },
-    { feature: 'abandonment_rate', featureLabel: 'Abandonment rate', value: 0.12, direction: 'increases' as const },
-    { feature: 'search_to_click_ratio', featureLabel: 'Search-to-click ratio', value: -0.05, direction: 'decreases' as const },
+    { feature: 'lead_time', featureLabel: 'Lead time (days)', value: 0.23, direction: 'increases' as const },
+    { feature: 'adr', featureLabel: 'Avg daily rate ($)', value: -0.15, direction: 'decreases' as const },
+    { feature: 'deposit_type_encoded', featureLabel: 'Deposit type', value: -0.08, direction: 'decreases' as const },
+    { feature: 'previous_cancellations', featureLabel: 'Previous cancellations', value: 0.12, direction: 'increases' as const },
+    { feature: 'weekend_stay_ratio', featureLabel: 'Weekend ratio', value: -0.05, direction: 'decreases' as const },
 ];
 
 describe('ShapWaterfall', () => {
@@ -54,7 +54,7 @@ describe('ShapWaterfall', () => {
                 finalPrediction={0.42}
             />
         );
-        expect(screen.getByText('Days inactive')).toBeInTheDocument();
-        expect(screen.getByText('Lifetime value ($)')).toBeInTheDocument();
+        expect(screen.getByText('Lead time (days)')).toBeInTheDocument();
+        expect(screen.getByText('Avg daily rate ($)')).toBeInTheDocument();
     });
 });

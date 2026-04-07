@@ -2,7 +2,10 @@
 Churn Prediction Model for SearchFlow.
 
 XGBoost-based propensity model with SHAP explainability
-for identifying at-risk users.
+for identifying at-risk hotel booking cancellations.
+
+v2.0: Trained on real hotel booking demand data (Antonio et al., 2019).
+Features derived from booking attributes rather than synthetic user sessions.
 """
 
 import numpy as np
@@ -27,7 +30,7 @@ class ChurnPrediction:
     churn_probability: float
     risk_level: str  # low, medium, high
     top_factors: List[Dict]  # SHAP explanations
-    
+
 
 @dataclass
 class ChurnModelMetrics:
@@ -39,340 +42,241 @@ class ChurnModelMetrics:
     f1: float
 
 
+# ── Encoding maps (must match dbt mart_ml_features.sql) ─────────────
+
+DEPOSIT_TYPE_MAP = {"No Deposit": 0, "Non Refund": 1, "Refundable": 2}
+
+MARKET_SEGMENT_MAP = {
+    "Aviation": 0,
+    "Complementary": 1,
+    "Corporate": 2,
+    "Direct": 3,
+    "Groups": 4,
+    "Offline TA/TO": 5,
+    "Online TA": 6,
+    "Undefined": 7,
+}
+
+CUSTOMER_TYPE_MAP = {
+    "Contract": 0,
+    "Group": 1,
+    "Transient": 2,
+    "Transient-Party": 3,
+}
+
+
+def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Transform raw hotel bookings into model-ready features.
+
+    This is the SINGLE SOURCE OF TRUTH for feature engineering.
+    The dbt SQL model (mart_ml_features.sql) must produce identical output.
+    """
+    out = pd.DataFrame()
+    out["lead_time"] = df["lead_time"].astype(int)
+    out["total_stay_nights"] = (
+        df["stays_in_weekend_nights"] + df["stays_in_week_nights"]
+    ).astype(int)
+    out["adr"] = df["adr"].astype(float)
+    out["is_repeated_guest"] = df["is_repeated_guest"].astype(int)
+    out["previous_cancellations"] = df["previous_cancellations"].astype(int)
+    out["previous_bookings_not_canceled"] = df["previous_bookings_not_canceled"].astype(int)
+    out["booking_changes"] = df["booking_changes"].astype(int)
+    out["total_of_special_requests"] = df["total_of_special_requests"].astype(int)
+    out["days_in_waiting_list"] = df["days_in_waiting_list"].astype(int)
+    out["guests_total"] = (
+        df["adults"] + df["children"].fillna(0) + df["babies"]
+    ).astype(int)
+
+    # Categorical encoding — fixed maps for reproducibility
+    out["deposit_type_encoded"] = (
+        df["deposit_type"].map(DEPOSIT_TYPE_MAP).fillna(0).astype(int)
+    )
+    out["market_segment_encoded"] = (
+        df["market_segment"].map(MARKET_SEGMENT_MAP).fillna(0).astype(int)
+    )
+    out["customer_type_encoded"] = (
+        df["customer_type"].map(CUSTOMER_TYPE_MAP).fillna(0).astype(int)
+    )
+
+    # Derived ratio — guard against zero-night stays
+    total = out["total_stay_nights"]
+    out["weekend_stay_ratio"] = (
+        df["stays_in_weekend_nights"] / total.replace(0, 1)
+    ).where(total > 0, 0.0)
+
+    out["is_canceled"] = df["is_canceled"].astype(int)
+    return out
+
+
 class ChurnPredictor:
     """
     XGBoost-based churn prediction model with SHAP explainability.
-    
-    Analyzes user behavior patterns to predict churn probability,
-    with SHAP values explaining the key risk factors.
-    
-    Features used:
-    - Session frequency (last 7, 30, 90 days)
-    - Search-to-click ratio
-    - Conversion rate
-    - Average session duration
-    - Days since last activity
-    - Device/platform patterns
-    - Total lifetime value
+
+    v2.0: Trained on hotel booking demand data. Predicts booking
+    cancellation probability using 14 domain-specific features.
     """
-    
+
+    MODEL_VERSION = "2.0"
+
     FEATURE_NAMES = [
-        'sessions_7d',
-        'sessions_30d', 
-        'sessions_90d',
-        'searches_total',
-        'clicks_total',
-        'conversions_total',
-        'search_to_click_ratio',
-        'click_to_conversion_ratio',
-        'avg_session_duration_mins',
-        'days_since_last_activity',
-        'lifetime_value',
-        'unique_destinations_searched',
-        'mobile_session_ratio',
-        'weekend_session_ratio',
+        "lead_time",
+        "total_stay_nights",
+        "adr",
+        "is_repeated_guest",
+        "previous_cancellations",
+        "previous_bookings_not_canceled",
+        "booking_changes",
+        "total_of_special_requests",
+        "days_in_waiting_list",
+        "guests_total",
+        "deposit_type_encoded",
+        "market_segment_encoded",
+        "customer_type_encoded",
+        "weekend_stay_ratio",
     ]
-    
+
     def __init__(
         self,
-        n_estimators: int = 100,
+        n_estimators: int = 200,
         max_depth: int = 6,
         learning_rate: float = 0.1,
-        random_state: int = 42
+        random_state: int = 42,
     ):
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.learning_rate = learning_rate
         self.random_state = random_state
-        
+
         self.model = xgb.XGBClassifier(
             n_estimators=n_estimators,
             max_depth=max_depth,
             learning_rate=learning_rate,
             random_state=random_state,
-            use_label_encoder=False,
-            eval_metric='auc'
+            eval_metric="auc",
         )
         self.scaler = StandardScaler()
         self.explainer = None
         self.feature_names = self.FEATURE_NAMES.copy()
         self.is_fitted = False
-        
+
     def fit(
         self,
         X: pd.DataFrame,
         y: pd.Series,
-        eval_set: Optional[Tuple[pd.DataFrame, pd.Series]] = None
-    ) -> 'ChurnPredictor':
-        """
-        Train the churn prediction model.
-        
-        Args:
-            X: Feature matrix
-            y: Binary churn labels (1=churned, 0=active)
-            eval_set: Optional validation set
-        """
-        # Scale features
+        eval_set: Optional[Tuple[pd.DataFrame, pd.Series]] = None,
+    ) -> "ChurnPredictor":
+        """Train the churn prediction model."""
         X_scaled = self.scaler.fit_transform(X)
-        
-        # Prepare eval set if provided
+
         eval_data = None
         if eval_set:
             X_val, y_val = eval_set
             X_val_scaled = self.scaler.transform(X_val)
             eval_data = [(X_val_scaled, y_val)]
-        
-        # Train model
-        self.model.fit(
-            X_scaled, y,
-            eval_set=eval_data,
-            verbose=False
-        )
-        
-        # Initialize SHAP explainer
+
+        self.model.fit(X_scaled, y, eval_set=eval_data, verbose=False)
         self.explainer = shap.TreeExplainer(self.model)
         self.is_fitted = True
-        
+
         return self
-    
+
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         X_scaled = self.scaler.transform(X)
         return self.model.predict_proba(X_scaled)[:, 1]
-    
+
     def predict(self, user_id: str, features: Dict[str, float]) -> ChurnPrediction:
-        """
-        Predict churn probability for a user with explanations.
-        
-        Args:
-            user_id: User identifier
-            features: Dictionary of feature values
-            
-        Returns:
-            ChurnPrediction with probability and SHAP explanations
-        """
-        # Build feature vector
+        """Predict churn probability for a user with SHAP explanations."""
         X = pd.DataFrame([features])[self.feature_names]
         X_scaled = self.scaler.transform(X)
-        
-        # Get probability
+
         churn_prob = float(self.model.predict_proba(X_scaled)[0, 1])
-        
-        # Compute SHAP values per-request for accurate per-prediction explanations
+
         shap_values = self.explainer.shap_values(X_scaled)[0]
-        
-        # Get top contributing factors
         factor_importance = list(zip(self.feature_names, shap_values))
         factor_importance.sort(key=lambda x: abs(x[1]), reverse=True)
-        
+
         top_factors = [
             {
                 "feature": name,
                 "impact": float(value),
                 "direction": "increases" if value > 0 else "decreases",
-                "value": features.get(name, 0)
+                "value": features.get(name, 0),
             }
             for name, value in factor_importance[:5]
         ]
-        
-        # Determine risk level
+
         if churn_prob < 0.3:
             risk_level = "low"
         elif churn_prob < 0.7:
             risk_level = "medium"
         else:
             risk_level = "high"
-        
+
         return ChurnPrediction(
             user_id=user_id,
             churn_probability=churn_prob,
             risk_level=risk_level,
-            top_factors=top_factors
+            top_factors=top_factors,
         )
-    
+
     def predict_batch(
-        self,
-        user_ids: List[str],
-        features_df: pd.DataFrame
+        self, user_ids: List[str], features_df: pd.DataFrame
     ) -> List[ChurnPrediction]:
         predictions = []
         for user_id, (_, row) in zip(user_ids, features_df.iterrows()):
-            features = row.to_dict()
-            predictions.append(self.predict(user_id, features))
+            predictions.append(self.predict(user_id, row.to_dict()))
         return predictions
-    
+
     def evaluate(self, X: pd.DataFrame, y: pd.Series) -> ChurnModelMetrics:
-        """
-        Evaluate model performance.
-        
-        Args:
-            X: Feature matrix
-            y: True labels
-            
-        Returns:
-            ChurnModelMetrics with performance scores
-        """
+        """Evaluate model performance."""
         X_scaled = self.scaler.transform(X)
         y_pred = self.model.predict(X_scaled)
         y_proba = self.model.predict_proba(X_scaled)[:, 1]
-        
+
         from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-        
+
         return ChurnModelMetrics(
             auc=roc_auc_score(y, y_proba),
             accuracy=accuracy_score(y, y_pred),
             precision=precision_score(y, y_pred),
             recall=recall_score(y, y_pred),
-            f1=f1_score(y, y_pred)
+            f1=f1_score(y, y_pred),
         )
-    
+
     def get_feature_importance(self) -> pd.DataFrame:
         importance = self.model.feature_importances_
-        return pd.DataFrame({
-            'feature': self.feature_names,
-            'importance': importance
-        }).sort_values('importance', ascending=False)
-    
+        return pd.DataFrame(
+            {"feature": self.feature_names, "importance": importance}
+        ).sort_values("importance", ascending=False)
+
     def save(self, path: str):
         os.makedirs(path, exist_ok=True)
-        
-        # Save XGBoost model
-        self.model.save_model(os.path.join(path, 'churn_model.json'))
-        
-        # Save scaler
-        joblib.dump(self.scaler, os.path.join(path, 'scaler.joblib'))
-        
-        # Save config
+        self.model.save_model(os.path.join(path, "churn_model.json"))
+        joblib.dump(self.scaler, os.path.join(path, "scaler.joblib"))
         config = {
-            'n_estimators': self.n_estimators,
-            'max_depth': self.max_depth,
-            'learning_rate': self.learning_rate,
-            'feature_names': self.feature_names
+            "model_version": self.MODEL_VERSION,
+            "n_estimators": self.n_estimators,
+            "max_depth": self.max_depth,
+            "learning_rate": self.learning_rate,
+            "feature_names": self.feature_names,
         }
-        with open(os.path.join(path, 'config.json'), 'w') as f:
+        with open(os.path.join(path, "config.json"), "w") as f:
             json.dump(config, f)
-    
+
     @classmethod
-    def load(cls, path: str) -> 'ChurnPredictor':
-        # Load config
-        with open(os.path.join(path, 'config.json'), 'r') as f:
+    def load(cls, path: str) -> "ChurnPredictor":
+        with open(os.path.join(path, "config.json"), "r") as f:
             config = json.load(f)
-        
-        # Create instance
+
         predictor = cls(
-            n_estimators=config['n_estimators'],
-            max_depth=config['max_depth'],
-            learning_rate=config['learning_rate']
+            n_estimators=config["n_estimators"],
+            max_depth=config["max_depth"],
+            learning_rate=config["learning_rate"],
         )
-        predictor.feature_names = config['feature_names']
-        
-        # Load XGBoost model
-        predictor.model.load_model(os.path.join(path, 'churn_model.json'))
-        
-        # Load scaler
-        predictor.scaler = joblib.load(os.path.join(path, 'scaler.joblib'))
-        
-        # Initialize explainer
+        predictor.feature_names = config["feature_names"]
+        predictor.model.load_model(os.path.join(path, "churn_model.json"))
+        predictor.scaler = joblib.load(os.path.join(path, "scaler.joblib"))
         predictor.explainer = shap.TreeExplainer(predictor.model)
         predictor.is_fitted = True
-        
+
         return predictor
-
-
-def build_churn_features(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Build churn prediction features from user event data.
-    
-    Args:
-        user_events_df: DataFrame with user events
-        
-    Returns:
-        DataFrame with computed features per user
-    """
-    from datetime import datetime, timedelta
-    
-    now = datetime.utcnow()
-    
-    features = []
-
-    if df.empty:
-        return pd.DataFrame(columns=[
-            'user_id', 'sessions_7d', 'sessions_30d', 'sessions_90d',
-            'searches_total', 'clicks_total', 'conversions_total',
-            'search_to_click_ratio', 'click_to_conversion_ratio',
-            'avg_session_duration_mins', 'days_since_last_activity',
-            'lifetime_value', 'unique_destinations_searched',
-            'mobile_session_ratio', 'weekend_session_ratio',
-        ])
-
-    for user_id, events in df.groupby('user_id'):
-        user_features = {'user_id': user_id}
-        
-        # Session counts
-        user_features['sessions_7d'] = len(
-            events[events['timestamp'] > now - timedelta(days=7)]
-            .groupby('session_id')
-        )
-        user_features['sessions_30d'] = len(
-            events[events['timestamp'] > now - timedelta(days=30)]
-            .groupby('session_id')
-        )
-        user_features['sessions_90d'] = len(
-            events[events['timestamp'] > now - timedelta(days=90)]
-            .groupby('session_id')
-        )
-        
-        # Event counts
-        user_features['searches_total'] = len(events[events['event_type'] == 'search'])
-        user_features['clicks_total'] = len(events[events['event_type'] == 'click'])
-        user_features['conversions_total'] = len(events[events['event_type'] == 'conversion'])
-        
-        # Ratios
-        user_features['search_to_click_ratio'] = (
-            user_features['clicks_total'] / max(user_features['searches_total'], 1)
-        )
-        user_features['click_to_conversion_ratio'] = (
-            user_features['conversions_total'] / max(user_features['clicks_total'], 1)
-        )
-        
-        # Session duration — compute from event timestamps per session
-        session_durations = (
-            events.groupby('session_id')['timestamp']
-            .agg(lambda ts: (ts.max() - ts.min()).total_seconds() / 60.0)
-        )
-        user_features['avg_session_duration_mins'] = (
-            session_durations.mean() if len(session_durations) > 0 else 0.0
-        )
-        
-        # Recency
-        last_event = events['timestamp'].max()
-        user_features['days_since_last_activity'] = (now - last_event).days
-        
-        # Value
-        if 'booking_value' in events.columns:
-            user_features['lifetime_value'] = events['booking_value'].sum()
-        else:
-            user_features['lifetime_value'] = 0
-        
-        # Diversity
-        if 'query' in events.columns:
-            user_features['unique_destinations_searched'] = events['query'].nunique()
-        else:
-            user_features['unique_destinations_searched'] = 0
-        
-        # Platform patterns
-        if 'platform' in events.columns:
-            mobile = events['platform'].isin(['ios', 'android']).sum()
-            user_features['mobile_session_ratio'] = mobile / len(events)
-        else:
-            user_features['mobile_session_ratio'] = 0
-        
-        # Time patterns
-        if 'timestamp' in events.columns:
-            weekend = events['timestamp'].dt.dayofweek.isin([5, 6]).sum()
-            user_features['weekend_session_ratio'] = weekend / len(events)
-        else:
-            user_features['weekend_session_ratio'] = 0
-        
-        features.append(user_features)
-    
-    return pd.DataFrame(features)

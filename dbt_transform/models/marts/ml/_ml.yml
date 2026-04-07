@@ -1,0 +1,95 @@
+version: 2
+
+models:
+  - name: mart_ml_features
+    description: |
+      ML feature mart computing the 14 churn prediction features from
+      hotel_bookings.csv. Encoding maps match Python engineer_features() exactly.
+      This is the SQL-side feature store — no Feast needed.
+    config:
+      contract:
+        enforced: true
+
+    columns:
+      - name: booking_id
+        data_type: BIGINT
+        tests: [unique, not_null]
+
+      - name: lead_time
+        data_type: BIGINT
+        tests: [not_null]
+
+      - name: total_stay_nights
+        data_type: BIGINT
+        tests: [not_null]
+
+      - name: adr
+        data_type: DOUBLE
+        tests: [not_null]
+
+      - name: is_repeated_guest
+        data_type: BIGINT
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+
+      - name: previous_cancellations
+        data_type: BIGINT
+        tests: [not_null]
+
+      - name: previous_bookings_not_canceled
+        data_type: BIGINT
+        tests: [not_null]
+
+      - name: booking_changes
+        data_type: BIGINT
+        tests: [not_null]
+
+      - name: total_of_special_requests
+        data_type: BIGINT
+        tests: [not_null]
+
+      - name: days_in_waiting_list
+        data_type: BIGINT
+        tests: [not_null]
+
+      - name: guests_total
+        data_type: BIGINT
+        tests:
+          - not_null
+          - positive_value: {}
+
+      - name: deposit_type_encoded
+        data_type: BIGINT
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1, 2]
+
+      - name: market_segment_encoded
+        data_type: BIGINT
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1, 2, 3, 4, 5, 6, 7]
+
+      - name: customer_type_encoded
+        data_type: BIGINT
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1, 2, 3]
+
+      - name: weekend_stay_ratio
+        data_type: DOUBLE
+        tests:
+          - not_null
+          - valid_ratio: {}
+
+      - name: is_canceled
+        data_type: BIGINT
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]

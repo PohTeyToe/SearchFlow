@@ -1,0 +1,13 @@
+# Ignore all raw CSV data (downloaded via scripts/download_datasets.sh)
+raw/*.csv
+
+# Ignore cloned dataset repos
+raw/booking_com/
+raw/airbnb_reviews/
+
+# Ignore processed data
+processed/
+
+# Ignore DuckDB files
+*.duckdb
+*.duckdb.wal

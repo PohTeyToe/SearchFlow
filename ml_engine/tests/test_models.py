@@ -26,7 +26,7 @@ from src.models.churn import (
     ChurnPredictor,
     ChurnPrediction,
     ChurnModelMetrics,
-    build_churn_features,
+    engineer_features,
 )
 
 
@@ -64,25 +64,25 @@ def items_df() -> pd.DataFrame:
 
 @pytest.fixture
 def churn_features_df() -> pd.DataFrame:
-    """Feature matrix for churn model tests."""
+    """Feature matrix for churn model tests (hotel booking features)."""
     np.random.seed(42)
     n = 200
     return pd.DataFrame(
         {
-            "sessions_7d": np.random.poisson(2, n),
-            "sessions_30d": np.random.poisson(7, n),
-            "sessions_90d": np.random.poisson(15, n),
-            "searches_total": np.random.poisson(20, n),
-            "clicks_total": np.random.poisson(8, n),
-            "conversions_total": np.random.poisson(1, n),
-            "search_to_click_ratio": np.random.uniform(0.1, 0.5, n),
-            "click_to_conversion_ratio": np.random.uniform(0, 0.3, n),
-            "avg_session_duration_mins": np.random.uniform(5, 30, n),
-            "days_since_last_activity": np.random.exponential(20, n),
-            "lifetime_value": np.random.uniform(0, 2000, n),
-            "unique_destinations_searched": np.random.randint(1, 10, n),
-            "mobile_session_ratio": np.random.uniform(0, 1, n),
-            "weekend_session_ratio": np.random.uniform(0.2, 0.4, n),
+            "lead_time": np.random.randint(0, 400, n),
+            "total_stay_nights": np.random.randint(1, 14, n),
+            "adr": np.random.uniform(30, 300, n),
+            "is_repeated_guest": np.random.choice([0, 1], n, p=[0.9, 0.1]),
+            "previous_cancellations": np.random.poisson(0.3, n),
+            "previous_bookings_not_canceled": np.random.poisson(1, n),
+            "booking_changes": np.random.poisson(0.5, n),
+            "total_of_special_requests": np.random.poisson(1, n),
+            "days_in_waiting_list": np.random.exponential(3, n).astype(int),
+            "guests_total": np.random.randint(1, 6, n),
+            "deposit_type_encoded": np.random.choice([0, 1, 2], n, p=[0.8, 0.15, 0.05]),
+            "market_segment_encoded": np.random.randint(0, 8, n),
+            "customer_type_encoded": np.random.randint(0, 4, n),
+            "weekend_stay_ratio": np.random.uniform(0, 1, n),
         }
     )
 
@@ -90,7 +90,31 @@ def churn_features_df() -> pd.DataFrame:
 @pytest.fixture
 def churn_labels(churn_features_df: pd.DataFrame) -> pd.Series:
     np.random.seed(42)
-    return pd.Series(np.random.choice([0, 1], size=len(churn_features_df), p=[0.6, 0.4]))
+    return pd.Series(np.random.choice([0, 1], size=len(churn_features_df), p=[0.63, 0.37]))
+
+
+@pytest.fixture
+def raw_bookings_df() -> pd.DataFrame:
+    """Minimal raw hotel bookings DataFrame for engineer_features() tests."""
+    return pd.DataFrame({
+        "lead_time": [50, 200, 10],
+        "stays_in_weekend_nights": [1, 0, 2],
+        "stays_in_week_nights": [2, 7, 0],
+        "adr": [120.0, 85.5, 200.0],
+        "is_repeated_guest": [0, 1, 0],
+        "previous_cancellations": [0, 2, 0],
+        "previous_bookings_not_canceled": [0, 5, 0],
+        "booking_changes": [1, 0, 3],
+        "total_of_special_requests": [2, 0, 1],
+        "days_in_waiting_list": [0, 15, 0],
+        "adults": [2, 1, 2],
+        "children": [0.0, 0.0, 1.0],
+        "babies": [0, 0, 0],
+        "deposit_type": ["No Deposit", "Non Refund", "Refundable"],
+        "market_segment": ["Direct", "Online TA", "Corporate"],
+        "customer_type": ["Transient", "Contract", "Group"],
+        "is_canceled": [0, 1, 0],
+    })
 
 
 @pytest.fixture
@@ -230,6 +254,22 @@ class TestTfidfSentimentModel:
 
 
 class TestChurnPredictor:
+    def test_model_version(self):
+        assert ChurnPredictor.MODEL_VERSION == "2.0"
+
+    def test_feature_names_count(self):
+        assert len(ChurnPredictor.FEATURE_NAMES) == 14
+
+    def test_feature_names_content(self):
+        expected = [
+            "lead_time", "total_stay_nights", "adr", "is_repeated_guest",
+            "previous_cancellations", "previous_bookings_not_canceled",
+            "booking_changes", "total_of_special_requests",
+            "days_in_waiting_list", "guests_total", "deposit_type_encoded",
+            "market_segment_encoded", "customer_type_encoded", "weekend_stay_ratio",
+        ]
+        assert ChurnPredictor.FEATURE_NAMES == expected
+
     def test_fit_and_predict(
         self, churn_features_df: pd.DataFrame, churn_labels: pd.Series
     ) -> None:
@@ -239,6 +279,20 @@ class TestChurnPredictor:
         assert isinstance(pred, ChurnPrediction)
         assert 0.0 <= pred.churn_probability <= 1.0
         assert pred.risk_level in ("low", "medium", "high")
+
+    def test_predict_proba(
+        self, churn_features_df: pd.DataFrame, churn_labels: pd.Series
+    ) -> None:
+        predictor = ChurnPredictor(n_estimators=10, max_depth=3)
+        predictor.fit(churn_features_df, churn_labels)
+        probs = predictor.predict_proba(churn_features_df)
+        assert len(probs) == len(churn_features_df)
+        assert all(0 <= p <= 1 for p in probs)
+
+    def test_predict_without_fit_raises(self):
+        predictor = ChurnPredictor(n_estimators=10)
+        with pytest.raises(Exception):
+            predictor.predict_proba(pd.DataFrame({"lead_time": [1]}))
 
     def test_evaluate_returns_metrics(
         self, churn_features_df: pd.DataFrame, churn_labels: pd.Series
@@ -268,3 +322,49 @@ class TestChurnPredictor:
         pred = predictor.predict("u1", churn_features_df.iloc[0].to_dict())
         assert len(pred.top_factors) == 5
         assert all("feature" in f for f in pred.top_factors)
+
+    def test_no_use_label_encoder_param(self):
+        """Verify deprecated use_label_encoder=False is removed."""
+        import inspect
+        source = inspect.getsource(ChurnPredictor)
+        assert "use_label_encoder" not in source
+
+
+class TestEngineerFeatures:
+    def test_output_columns(self, raw_bookings_df):
+        result = engineer_features(raw_bookings_df)
+        for col in ChurnPredictor.FEATURE_NAMES + ["is_canceled"]:
+            assert col in result.columns
+
+    def test_total_stay_nights(self, raw_bookings_df):
+        result = engineer_features(raw_bookings_df)
+        expected = raw_bookings_df["stays_in_weekend_nights"] + raw_bookings_df["stays_in_week_nights"]
+        pd.testing.assert_series_equal(result["total_stay_nights"], expected.astype(int), check_names=False)
+
+    def test_guests_total(self, raw_bookings_df):
+        result = engineer_features(raw_bookings_df)
+        expected = (raw_bookings_df["adults"] + raw_bookings_df["children"].fillna(0) + raw_bookings_df["babies"])
+        pd.testing.assert_series_equal(result["guests_total"], expected.astype(int), check_names=False)
+
+    def test_deposit_type_encoding(self, raw_bookings_df):
+        result = engineer_features(raw_bookings_df)
+        valid_values = {0, 1, 2}
+        assert set(result["deposit_type_encoded"].unique()).issubset(valid_values)
+
+    def test_weekend_stay_ratio_bounds(self, raw_bookings_df):
+        result = engineer_features(raw_bookings_df)
+        assert result["weekend_stay_ratio"].between(0, 1).all()
+
+    def test_zero_night_stay_ratio(self):
+        """When total_stay_nights is 0, weekend_stay_ratio should be 0."""
+        df = pd.DataFrame({
+            "lead_time": [10], "stays_in_weekend_nights": [0], "stays_in_week_nights": [0],
+            "adr": [100.0], "is_repeated_guest": [0], "previous_cancellations": [0],
+            "previous_bookings_not_canceled": [0], "booking_changes": [0],
+            "total_of_special_requests": [0], "days_in_waiting_list": [0],
+            "adults": [1], "children": [0], "babies": [0],
+            "deposit_type": ["No Deposit"], "market_segment": ["Direct"],
+            "customer_type": ["Transient"], "is_canceled": [0],
+        })
+        result = engineer_features(df)
+        assert result["weekend_stay_ratio"].iloc[0] == 0.0

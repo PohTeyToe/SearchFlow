@@ -86,20 +86,20 @@ SENTIMENT = SentimentConfig()
 # ------------------------------------------------------------------
 
 CHURN_FEATURE_NAMES: List[str] = [
-    "sessions_7d",
-    "sessions_30d",
-    "sessions_90d",
-    "searches_total",
-    "clicks_total",
-    "conversions_total",
-    "search_to_click_ratio",
-    "click_to_conversion_ratio",
-    "avg_session_duration_mins",
-    "days_since_last_activity",
-    "lifetime_value",
-    "unique_destinations_searched",
-    "mobile_session_ratio",
-    "weekend_session_ratio",
+    "lead_time",
+    "total_stay_nights",
+    "adr",
+    "is_repeated_guest",
+    "previous_cancellations",
+    "previous_bookings_not_canceled",
+    "booking_changes",
+    "total_of_special_requests",
+    "days_in_waiting_list",
+    "guests_total",
+    "deposit_type_encoded",
+    "market_segment_encoded",
+    "customer_type_encoded",
+    "weekend_stay_ratio",
 ]
 
 

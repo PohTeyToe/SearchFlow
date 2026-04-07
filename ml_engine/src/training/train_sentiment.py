@@ -1,14 +1,18 @@
 """
 Train the sentiment analysis model.
 
-Generates synthetic reviews, trains DistilBERT or TF-IDF model,
-and evaluates classification accuracy.
+Loads real review CSVs when available, falls back to synthetic generation.
+Trains DistilBERT or TF-IDF model and evaluates classification accuracy.
 """
 
+import glob
 import json
 import os
 import sys
 from pathlib import Path
+from typing import Optional
+
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
 
@@ -22,13 +26,46 @@ from src.models.sentiment import SentimentAnalyzer, TfidfSentimentModel
 from src.data.generate_reviews import generate_dataset
 
 
+def load_reviews(data_dir: str) -> Optional[pd.DataFrame]:
+    """Load review CSVs from data_dir.
+
+    Looks for CSV files with text+sentiment or text+rating columns.
+    Star ratings are mapped: 4-5=positive, 1-2=negative, 3=neutral.
+
+    Returns DataFrame with text+sentiment columns, or None if no match.
+    """
+    csv_files = glob.glob(os.path.join(data_dir, "*.csv"))
+
+    for csv_file in csv_files:
+        try:
+            df = pd.read_csv(csv_file, nrows=5)  # peek at columns
+        except Exception:
+            continue
+
+        if "text" not in df.columns:
+            continue
+
+        df = pd.read_csv(csv_file)
+
+        if "sentiment" in df.columns:
+            return df[["text", "sentiment"]].dropna()
+
+        if "rating" in df.columns:
+            df["sentiment"] = df["rating"].map(
+                lambda r: "positive" if r >= 4 else "negative" if r <= 2 else "neutral"
+            )
+            return df[["text", "sentiment"]].dropna()
+
+    return None
+
+
 def train_sentiment(
     n_samples: int = 25000,
     use_bert: bool = False,
-    model_path: str = "./models/sentiment"
+    model_path: str = "./models/sentiment",
+    data_dir: str = "data/raw",
 ):
     """Train and save the sentiment model."""
-    # Configure MLflow
     tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment("sentiment-analysis")
@@ -37,10 +74,19 @@ def train_sentiment(
     print("=" * 50)
     print("Training Sentiment Analysis Model")
     print("=" * 50)
-    
-    # Generate training data
-    print(f"\n[1/4] Generating {n_samples:,} synthetic reviews...")
-    texts, labels = generate_dataset(n_samples)
+
+    # Try real data first, fall back to synthetic
+    print("\n[1/4] Loading review data...")
+    reviews = load_reviews(data_dir)
+    if reviews is not None:
+        texts = reviews["text"].tolist()
+        labels = reviews["sentiment"].tolist()
+        data_source = "csv"
+        print(f"  Loaded {len(texts):,} real reviews from {data_dir}")
+    else:
+        print(f"  No review CSVs found in {data_dir}, using synthetic data")
+        texts, labels = generate_dataset(n_samples)
+        data_source = "synthetic"
     
     print(f"  Positive: {labels.count('positive'):,}")
     print(f"  Negative: {labels.count('negative'):,}")
@@ -88,12 +134,16 @@ def train_sentiment(
         accuracy = correct / len(eval_labels)
 
         # Log metrics
+        f1_macro = f1_score(eval_labels, predictions, average="macro",
+                            labels=["positive", "negative", "neutral"])
         mlflow.log_metric("accuracy", accuracy)
+        mlflow.log_metric("f1_macro", float(f1_macro))
         mlflow.log_params({
-            "n_samples": n_samples,
+            "n_samples": len(texts),
             "n_train": len(train_texts),
             "n_test": len(test_texts),
             "model_type": "bert" if use_bert else "tfidf_logreg",
+            "data_source": data_source,
         })
 
         # Per-class F1
@@ -123,10 +173,12 @@ def train_sentiment(
         os.makedirs(results_dir, exist_ok=True)
         results = {
             "model": "bert" if use_bert else "tfidf_logreg",
-            "n_samples": n_samples,
+            "data_source": data_source,
+            "n_samples": len(texts),
             "n_train": len(train_texts),
             "n_test": len(test_texts),
             "accuracy": round(float(accuracy), 4),
+            "f1_macro": round(float(f1_macro), 4),
             "label_distribution": {
                 "positive": labels.count("positive"),
                 "negative": labels.count("negative"),
@@ -161,6 +213,7 @@ if __name__ == "__main__":
     parser.add_argument("--samples", type=int, default=25000)
     parser.add_argument("--use-bert", action="store_true")
     parser.add_argument("--model-path", default="./models/sentiment")
+    parser.add_argument("--data-dir", default="data/raw")
     args = parser.parse_args()
-    
-    train_sentiment(args.samples, args.use_bert, args.model_path)
+
+    train_sentiment(args.samples, args.use_bert, args.model_path, args.data_dir)

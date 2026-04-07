@@ -6,13 +6,14 @@ browsing sessions, respecting configurable funnel rates and
 content distributions.
 """
 
+import math
 import random
 from collections.abc import Generator
 from datetime import datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from .config import Config
+from .config import Config, COUNTRY_CODE_MAP, COUNTRY_DESTINATION_MAP
 from .models import ClickEvent, ConversionEvent, SearchEvent
 
 
@@ -51,11 +52,17 @@ class EventGenerator:
         # Product types
         self.product_types = ["flight", "hotel", "car", "package"]
 
-        # Cities for geo
-        self.cities = {
-            "CA": ["Toronto", "Vancouver", "Montreal", "Calgary", "Ottawa"],
-            "US": ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"]
-        }
+        # Build country list and weights from config
+        self._country_codes = list(self.config.country_weights.keys())
+        self._country_weights = list(self.config.country_weights.values())
+
+        # Cities for geo (expanded from country weights)
+        self.cities = dict(COUNTRY_DESTINATION_MAP)
+        # Ensure all weighted countries have at least a fallback city
+        for code in self._country_codes:
+            code2 = COUNTRY_CODE_MAP.get(code, code)
+            if code2 not in self.cities:
+                self.cities[code2] = [code2]
 
     def generate_session(self) -> Generator[dict[str, Any], None, None]:
         """
@@ -73,8 +80,10 @@ class EventGenerator:
         # Session context (consistent across session)
         platform = random.choice(self.config.platforms)
         device_type = self._get_device_for_platform(platform)
-        geo_country = random.choice(["CA", "US"])
-        geo_city = random.choice(self.cities[geo_country])
+        # Weighted country sampling from real distributions
+        raw_country = random.choices(self._country_codes, weights=self._country_weights, k=1)[0]
+        geo_country = COUNTRY_CODE_MAP.get(raw_country, raw_country)
+        geo_city = random.choice(self.cities.get(geo_country, [geo_country]))
         utm_source = random.choice(self.config.utm_sources)
         utm_campaign = self._get_campaign_for_source(utm_source)
 
@@ -256,13 +265,17 @@ class EventGenerator:
         if "flight" in query.lower():
             filters["travelers"] = random.randint(1, 4)
 
-        # Add dates for most searches
+        # Add dates for most searches — lead time from real distribution
         if random.random() > 0.3:
-            start_date = datetime.utcnow() + timedelta(days=random.randint(7, 90))
-            end_date = start_date + timedelta(days=random.randint(3, 14))
+            lead_time = max(1, int(random.expovariate(
+                1.0 / max(self.config.lead_time_median, 1)
+            )))
+            start_date = datetime.utcnow() + timedelta(days=lead_time)
+            stay_nights = max(1, random.randint(1, 14))
+            end_date = start_date + timedelta(days=stay_nights)
             filters["dates"] = [
                 start_date.strftime("%Y-%m-%d"),
-                end_date.strftime("%Y-%m-%d")
+                end_date.strftime("%Y-%m-%d"),
             ]
 
         return filters
@@ -299,12 +312,18 @@ class EventGenerator:
         )[0]
 
     def _generate_price(self, product_type):
+        if product_type == "hotel":
+            # Log-normal ADR from real distribution (always positive)
+            mean = self.config.adr_mean
+            std = self.config.adr_std
+            mu = math.log(mean**2 / math.sqrt(std**2 + mean**2))
+            sigma = math.sqrt(math.log(1 + std**2 / mean**2))
+            return round(random.lognormvariate(mu, sigma), 2)
+
         price_ranges = {
             "flight": (150, 1500),
-            "hotel": (80, 500),
             "car": (30, 150),
-            "package": (500, 3000)
+            "package": (500, 3000),
         }
-
         min_price, max_price = price_ranges.get(product_type, (100, 500))
         return round(random.uniform(min_price, max_price), 2)

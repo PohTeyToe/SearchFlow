@@ -249,16 +249,20 @@ const mockUserSegments: UserSegment[] = [
 
 // Feature definitions for SHAP values
 const FEATURE_LABELS: Record<string, string> = {
-    sessions_7d: 'Sessions (7d)',
-    days_since_last_activity: 'Days inactive',
-    search_to_click_ratio: 'Search-to-click ratio',
-    lifetime_value: 'Lifetime value ($)',
-    avg_session_duration: 'Avg session duration',
-    total_searches: 'Total searches',
-    unique_destinations_viewed: 'Destinations viewed',
-    booking_count: 'Booking count',
-    abandonment_rate: 'Abandonment rate',
-    return_visit_rate: 'Return visit rate',
+    lead_time: 'Lead time (days)',
+    total_stay_nights: 'Total stay nights',
+    adr: 'Avg daily rate ($)',
+    is_repeated_guest: 'Repeated guest',
+    previous_cancellations: 'Previous cancellations',
+    previous_bookings_not_canceled: 'Previous completed',
+    booking_changes: 'Booking changes',
+    total_of_special_requests: 'Special requests',
+    days_in_waiting_list: 'Waiting list days',
+    guests_total: 'Total guests',
+    deposit_type_encoded: 'Deposit type',
+    market_segment_encoded: 'Market segment',
+    customer_type_encoded: 'Customer type',
+    weekend_stay_ratio: 'Weekend ratio',
 };
 
 const FEATURES = Object.keys(FEATURE_LABELS);

@@ -29,7 +29,7 @@ class TestQueryChurnModel:
         assert "user_123" in result
         assert "45.0%" in result
         assert "medium" in result
-        assert "days_since_last_activity" in result
+        assert "lead_time" in result
 
     def test_handles_connection_error(self):
         mock_client = MagicMock()
@@ -262,7 +262,7 @@ class TestGetShapExplanation:
 
         assert "user_123" in result
         assert "%" in result
-        assert "days_since_last_activity" in result
+        assert "lead_time" in result
         assert "increases" in result
 
     def test_handles_missing_shap_data(self):

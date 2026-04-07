@@ -1,0 +1,156 @@
+unit_tests:
+
+  # ── Session grouping (int_search_sessions) ─────────────────────────
+
+  - name: test_session_groups_events
+    description: "Events with the same session_id are grouped into one session"
+    model: int_search_sessions
+    given:
+      - input: ref('stg_search_events')
+        rows:
+          - {event_id: "e1", session_id: "sess1", user_id: "u1", event_timestamp: "2024-01-01 10:00:00", search_query: "hotel paris", result_count: 5, destination: "Paris", geo_country: "FR", device_type: "desktop", platform: "web"}
+          - {event_id: "e2", session_id: "sess1", user_id: "u1", event_timestamp: "2024-01-01 10:05:00", search_query: "hotel paris cheap", result_count: 3, destination: "Paris", geo_country: "FR", device_type: "desktop", platform: "web"}
+      - input: ref('stg_click_events')
+        rows: []
+      - input: ref('stg_conversion_events')
+        rows: []
+    expect:
+      rows:
+        - {session_id: "sess1", user_id: "u1", search_count: 2}
+
+  - name: test_session_split_by_id
+    description: "Different session_ids produce separate session rows"
+    model: int_search_sessions
+    given:
+      - input: ref('stg_search_events')
+        rows:
+          - {event_id: "e1", session_id: "sess1", user_id: "u1", event_timestamp: "2024-01-01 10:00:00", search_query: "hotel", result_count: 5, destination: "Paris", geo_country: "FR", device_type: "desktop", platform: "web"}
+          - {event_id: "e2", session_id: "sess2", user_id: "u1", event_timestamp: "2024-01-01 11:00:00", search_query: "resort", result_count: 3, destination: "London", geo_country: "GB", device_type: "mobile", platform: "ios"}
+      - input: ref('stg_click_events')
+        rows: []
+      - input: ref('stg_conversion_events')
+        rows: []
+    expect:
+      rows:
+        - {session_id: "sess1", search_count: 1}
+        - {session_id: "sess2", search_count: 1}
+
+  # ── Session outcome classification ─────────────────────────────────
+
+  - name: test_session_outcome_bounced
+    description: "Session with searches but no clicks produces outcome 'bounced'"
+    model: int_search_sessions
+    given:
+      - input: ref('stg_search_events')
+        rows:
+          - {event_id: "e1", session_id: "sess1", user_id: "u1", event_timestamp: "2024-01-01 10:00:00", search_query: "hotel", result_count: 5, destination: "Paris", geo_country: "FR", device_type: "desktop", platform: "web"}
+      - input: ref('stg_click_events')
+        rows: []
+      - input: ref('stg_conversion_events')
+        rows: []
+    expect:
+      rows:
+        - {session_id: "sess1", session_outcome: "bounced", click_count: 0, conversion_count: 0}
+
+  - name: test_session_outcome_engaged
+    description: "Session with clicks but no conversion produces outcome 'engaged'"
+    model: int_search_sessions
+    given:
+      - input: ref('stg_search_events')
+        rows:
+          - {event_id: "e1", session_id: "sess1", user_id: "u1", event_timestamp: "2024-01-01 10:00:00", search_query: "hotel", result_count: 5, destination: "Paris", geo_country: "FR", device_type: "desktop", platform: "web"}
+      - input: ref('stg_click_events')
+        rows:
+          - {event_id: "c1", session_id: "sess1", search_event_id: "e1", user_id: "u1", event_timestamp: "2024-01-01 10:00:30", result_position: 2, result_destination: "Paris", result_price: 150.0, result_type: "hotel", result_provider: "booking"}
+      - input: ref('stg_conversion_events')
+        rows: []
+    expect:
+      rows:
+        - {session_id: "sess1", session_outcome: "engaged", click_count: 1, conversion_count: 0}
+
+  - name: test_session_outcome_converted
+    description: "Session with click and conversion produces outcome 'converted'"
+    model: int_search_sessions
+    given:
+      - input: ref('stg_search_events')
+        rows:
+          - {event_id: "e1", session_id: "sess1", user_id: "u1", event_timestamp: "2024-01-01 10:00:00", search_query: "hotel", result_count: 5, destination: "Paris", geo_country: "FR", device_type: "desktop", platform: "web"}
+      - input: ref('stg_click_events')
+        rows:
+          - {event_id: "c1", session_id: "sess1", search_event_id: "e1", user_id: "u1", event_timestamp: "2024-01-01 10:00:30", result_position: 1, result_destination: "Paris", result_price: 200.0, result_type: "hotel", result_provider: "expedia"}
+      - input: ref('stg_conversion_events')
+        rows:
+          - {event_id: "cv1", session_id: "sess1", click_event_id: "c1", user_id: "u1", event_timestamp: "2024-01-01 10:05:00", booking_value: 200.0, commission: 20.0, product_type: "hotel", provider: "expedia"}
+    expect:
+      rows:
+        - {session_id: "sess1", session_outcome: "converted", click_count: 1, conversion_count: 1}
+
+  # ── Metric edge cases ──────────────────────────────────────────────
+
+  - name: test_ctr_zero_searches
+    description: "CTR is 0 when there are zero searches (no division by zero)"
+    model: fct_search_funnel
+    given:
+      - input: ref('int_search_sessions')
+        rows:
+          - {session_id: "sess1", user_id: "u1", session_start: "2024-01-01 10:00:00", search_count: 0, click_count: 0, conversion_count: 0, session_outcome: "bounced", total_booking_value: 0, total_commission: 0, session_duration_minutes: 0, avg_click_position: null, unique_queries: 0, platform: "web", device_type: "desktop", geo_country: "FR", utm_source: "google", utm_campaign: "brand"}
+    expect:
+      rows:
+        - {click_through_rate: 0.0, conversion_rate: 0.0}
+
+  - name: test_conversion_rate_zero_clicks
+    description: "Conversion rate is 0 when there are no clicks"
+    model: fct_search_funnel
+    given:
+      - input: ref('int_search_sessions')
+        rows:
+          - {session_id: "sess1", user_id: "u1", session_start: "2024-01-01 10:00:00", search_count: 5, click_count: 0, conversion_count: 0, session_outcome: "bounced", total_booking_value: 0, total_commission: 0, session_duration_minutes: 5, avg_click_position: null, unique_queries: 3, platform: "web", device_type: "desktop", geo_country: "US", utm_source: null, utm_campaign: null}
+    expect:
+      rows:
+        - {total_searches: 5, conversion_rate: 0.0}
+
+  # ── User segmentation ──────────────────────────────────────────────
+
+  - name: test_user_segment_high_value
+    description: "User with high revenue and conversions is classified as high_value"
+    model: mart_user_segments
+    given:
+      - input: ref('dim_users')
+        rows:
+          - {user_id: "u1", first_seen_at: "2024-01-01 00:00:00", last_seen_at: "2024-03-01 00:00:00", days_since_last_seen: 5, account_age_days: 60, total_sessions: 50, lifetime_searches: 200, lifetime_clicks: 150, lifetime_conversions: 30, lifetime_revenue: 3000.0, lifetime_commission: 300.0, primary_platform: "web", primary_device: "desktop", primary_country: "US", avg_session_duration: 15.0, avg_ctr: 0.75, avg_conversion_rate: 0.2, lifetime_ctr: 0.75, lifetime_conversion_rate: 0.2, revenue_per_session: 60.0, avg_order_value: 100.0}
+    expect:
+      rows:
+        - {user_id: "u1", segment: "high_value"}
+
+  # ── Null user exclusion ────────────────────────────────────────────
+
+  - name: test_null_user_excluded
+    description: "Null user_id rows are excluded from dim_users"
+    model: dim_users
+    given:
+      - input: ref('int_search_sessions')
+        rows:
+          - {session_id: "sess1", user_id: null, session_start: "2024-01-01 10:00:00", search_count: 1, click_count: 0, conversion_count: 0, session_outcome: "bounced", total_booking_value: 0, total_commission: 0, session_duration_minutes: 1, avg_click_position: null, unique_queries: 1, platform: "web", device_type: "desktop", geo_country: "FR", utm_source: null, utm_campaign: null}
+          - {session_id: "sess2", user_id: "u1", session_start: "2024-01-01 11:00:00", search_count: 2, click_count: 1, conversion_count: 0, session_outcome: "engaged", total_booking_value: 0, total_commission: 0, session_duration_minutes: 5, avg_click_position: 3.0, unique_queries: 2, platform: "ios", device_type: "mobile", geo_country: "US", utm_source: "google", utm_campaign: "brand"}
+    expect:
+      rows:
+        - {user_id: "u1"}
+
+  # ── Recommendation normalization ───────────────────────────────────
+
+  - name: test_recommendation_score_bounds
+    description: "Recommendation scores should be between 0 and 1"
+    model: mart_recommendations
+    given:
+      - input: ref('stg_click_events')
+        rows:
+          - {event_id: "c1", session_id: "s1", search_event_id: "e1", user_id: "u1", event_timestamp: "2024-01-01 10:00:00", result_position: 1, result_destination: "Paris", result_price: 150.0, result_type: "hotel", result_provider: "booking"}
+          - {event_id: "c2", session_id: "s1", search_event_id: "e1", user_id: "u1", event_timestamp: "2024-01-01 10:01:00", result_position: 2, result_destination: "London", result_price: 200.0, result_type: "hotel", result_provider: "expedia"}
+          - {event_id: "c3", session_id: "s2", search_event_id: "e2", user_id: "u2", event_timestamp: "2024-01-02 10:00:00", result_position: 1, result_destination: "Paris", result_price: 180.0, result_type: "hotel", result_provider: "booking"}
+          - {event_id: "c4", session_id: "s2", search_event_id: "e2", user_id: "u2", event_timestamp: "2024-01-02 10:01:00", result_position: 2, result_destination: "London", result_price: 220.0, result_type: "hotel", result_provider: "kayak"}
+      - input: ref('stg_conversion_events')
+        rows:
+          - {event_id: "cv1", session_id: "s1", click_event_id: "c1", user_id: "u1", event_timestamp: "2024-01-01 10:05:00", booking_value: 150.0, commission: 15.0, product_type: "hotel", provider: "booking"}
+    expect:
+      rows:
+        - {user_id: "u2"}

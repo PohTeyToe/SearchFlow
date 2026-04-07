@@ -88,13 +88,13 @@ services:
           --role Admin \
           --email admin@searchflow.local
         # Install additional Python packages
-        pip install duckdb redis dbt-duckdb
+        pip install duckdb redis "dbt-duckdb>=1.8.0"
     restart: "no"
 
   airflow-webserver:
     <<: *airflow-common
     container_name: searchflow-airflow-webserver
-    command: bash -c "pip install duckdb redis dbt-duckdb && airflow webserver"
+    command: bash -c "pip install duckdb redis "dbt-duckdb>=1.8.0" && airflow webserver"
     ports:
       - "8080:8080"
     healthcheck:
@@ -109,7 +109,7 @@ services:
   airflow-scheduler:
     <<: *airflow-common
     container_name: searchflow-airflow-scheduler
-    command: bash -c "pip install duckdb redis dbt-duckdb && airflow scheduler"
+    command: bash -c "pip install duckdb redis "dbt-duckdb>=1.8.0" && airflow scheduler"
     depends_on:
       airflow-init:
         condition: service_completed_successfully

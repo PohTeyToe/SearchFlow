@@ -451,9 +451,9 @@ async def predict_churn(request: Request, user_id: str, body: ChurnRequest = Chu
             churn_probability=0.45,
             risk_level=RiskLevel.medium,
             top_factors=[
-                ChurnFactor(feature="days_since_last_activity", impact=0.15, direction="increases", value=45),
-                ChurnFactor(feature="sessions_7d", impact=-0.12, direction="decreases", value=0),
-                ChurnFactor(feature="conversions_total", impact=-0.08, direction="decreases", value=0),
+                ChurnFactor(feature="lead_time", impact=0.15, direction="increases", value=120),
+                ChurnFactor(feature="deposit_type_encoded", impact=0.12, direction="increases", value=1),
+                ChurnFactor(feature="adr", impact=-0.08, direction="decreases", value=85.0),
             ],
             cached=False
         )
@@ -492,30 +492,29 @@ def _deterministic_int(seed: int, lo: int, hi: int) -> int:
 def get_user_features(user_id: str) -> dict:
     """Build a deterministic feature vector from a user ID.
 
-    In production this would query the DuckDB warehouse.  For now we
-    derive every value from a hash of the user_id so that:
+    In production this would query the DuckDB warehouse / mart_ml_features.
+    For now we derive every value from a hash of the user_id so that:
       - The same user_id always returns the same features (no randomness).
       - Different user_ids produce different but plausible feature values.
     """
     digest = hashlib.sha256(user_id.encode()).hexdigest()
-    # Use successive 8-hex-char slices as independent seeds
     seeds = [int(digest[i : i + 8], 16) for i in range(0, 64, 8)]
 
     return {
-        "sessions_7d": _deterministic_int(seeds[0], 0, 5),
-        "sessions_30d": _deterministic_int(seeds[0] >> 4, 5, 20),
-        "sessions_90d": _deterministic_int(seeds[0] >> 8, 20, 50),
-        "searches_total": _deterministic_int(seeds[1], 10, 100),
-        "clicks_total": _deterministic_int(seeds[1] >> 4, 5, 50),
-        "conversions_total": _deterministic_int(seeds[2], 0, 5),
-        "search_to_click_ratio": round(_deterministic_float(seeds[2] >> 4, 0.1, 0.5), 3),
-        "click_to_conversion_ratio": round(_deterministic_float(seeds[3], 0.0, 0.2), 3),
-        "avg_session_duration_mins": round(_deterministic_float(seeds[3] >> 4, 5.0, 30.0), 1),
-        "days_since_last_activity": _deterministic_int(seeds[4], 1, 60),
-        "lifetime_value": round(_deterministic_float(seeds[4] >> 4, 0.0, 2000.0), 2),
-        "unique_destinations_searched": _deterministic_int(seeds[5], 1, 10),
-        "mobile_session_ratio": round(_deterministic_float(seeds[5] >> 4, 0.0, 1.0), 3),
-        "weekend_session_ratio": round(_deterministic_float(seeds[6], 0.2, 0.4), 3),
+        "lead_time": _deterministic_int(seeds[0], 0, 400),
+        "total_stay_nights": _deterministic_int(seeds[0] >> 4, 1, 14),
+        "adr": round(_deterministic_float(seeds[1], 30.0, 300.0), 2),
+        "is_repeated_guest": _deterministic_int(seeds[1] >> 4, 0, 1),
+        "previous_cancellations": _deterministic_int(seeds[2], 0, 5),
+        "previous_bookings_not_canceled": _deterministic_int(seeds[2] >> 4, 0, 20),
+        "booking_changes": _deterministic_int(seeds[3], 0, 5),
+        "total_of_special_requests": _deterministic_int(seeds[3] >> 4, 0, 5),
+        "days_in_waiting_list": _deterministic_int(seeds[4], 0, 50),
+        "guests_total": _deterministic_int(seeds[4] >> 4, 1, 6),
+        "deposit_type_encoded": _deterministic_int(seeds[5], 0, 2),
+        "market_segment_encoded": _deterministic_int(seeds[5] >> 4, 0, 7),
+        "customer_type_encoded": _deterministic_int(seeds[6], 0, 3),
+        "weekend_stay_ratio": round(_deterministic_float(seeds[6] >> 4, 0.0, 1.0), 3),
     }
 
 
@@ -523,8 +522,8 @@ def get_user_features(user_id: str) -> dict:
 # Performance Metrics Endpoint
 # ============================================
 
-@app.get("/metrics")
-async def get_metrics():
+@app.get("/model-metrics")
+async def get_model_metrics():
     """Get model performance metrics loaded from training results."""
     metrics = {
         "recommendation": {"algorithm": "hybrid_cf_cb"},
