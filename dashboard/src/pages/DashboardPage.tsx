@@ -1,11 +1,13 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MainLayout } from '../components/layout';
 import { ParticleField } from '../components/effects/ParticleField';
 import { TextShimmer } from '../components/effects/TextShimmer';
 import { BorderBeam } from '../components/effects/BorderBeam';
+import { AnimatedDivider } from '../components/effects/AnimatedDivider';
+import { BlurFade } from '../components/effects/BlurFade';
 import { AnimatedNumber } from '../components/motion/AnimatedNumber';
 import { StaggerContainer, staggerItem } from '../components/motion/StaggerContainer';
 import { ScrollReveal } from '../components/motion/ScrollReveal';
@@ -64,8 +66,13 @@ export const DashboardPage: React.FC = () => {
         regular: 'default', abandoned_search: 'warning',
     };
 
+    // Parallax for globe section
+    const { scrollYProgress } = useScroll();
+    const globeY = useTransform(scrollYProgress, [0.3, 0.6], [40, -40]);
+    const textY = useTransform(scrollYProgress, [0.3, 0.6], [0, -20]);
+
     return (
-        <MainLayout fullWidth>
+        <MainLayout fullWidth title="Dashboard">
             {/* ═══════════════════════════════════════════
                 SECTION 1 — HERO: REVENUE AT RISK
             ═══════════════════════════════════════════ */}
@@ -209,7 +216,7 @@ export const DashboardPage: React.FC = () => {
             </section>
 
             {/* Divider */}
-            <div className="w-full h-px mx-auto max-w-5xl" style={{ background: 'linear-gradient(90deg, transparent, var(--border-default), transparent)' }} />
+            <AnimatedDivider />
 
             {/* ═══════════════════════════════════════════
                 SECTION 2 — BOOKING FUNNEL
@@ -219,22 +226,24 @@ export const DashboardPage: React.FC = () => {
                     <div
                         className="rounded-2xl p-8 noise-overlay"
                         style={{
-                            background: 'rgba(26, 26, 26, 0.6)',
+                            background: 'var(--glass-bg)',
                             backdropFilter: 'blur(16px)',
                             border: '1px solid var(--border-subtle)',
                         }}
                     >
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ backgroundColor: 'var(--accent-subtle)' }}>
-                                <TrendingUp className="w-3.5 h-3.5" style={{ color: 'var(--accent)' }} />
+                        <BlurFade delay={0.1} inView>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ backgroundColor: 'var(--accent-subtle)' }}>
+                                    <TrendingUp className="w-3.5 h-3.5" style={{ color: 'var(--accent)' }} />
+                                </div>
+                                <h2 className="text-lg font-semibold tracking-tight" style={{ letterSpacing: '-0.01em' }}>
+                                    Booking Funnel
+                                </h2>
                             </div>
-                            <h2 className="text-lg font-semibold tracking-tight" style={{ letterSpacing: '-0.01em' }}>
-                                Booking Funnel
-                            </h2>
-                        </div>
-                        <p className="text-xs mb-8" style={{ color: 'var(--text-muted)' }}>
-                            Search → View → Book — last 7 days
-                        </p>
+                            <p className="text-xs mb-8" style={{ color: 'var(--text-muted)' }}>
+                                Search → View → Book — last 7 days
+                            </p>
+                        </BlurFade>
                         <AnimatedFunnel
                             steps={[
                                 { label: 'Searches', value: totalSearches, color: 'var(--accent)' },
@@ -261,19 +270,21 @@ export const DashboardPage: React.FC = () => {
             <section className="px-6 py-16 max-w-5xl mx-auto">
                 <ScrollReveal>
                     <div className="flex flex-col lg:flex-row items-center gap-8">
-                        <div className="flex-1 text-center lg:text-left">
-                            <div className="flex items-center gap-2 mb-2 justify-center lg:justify-start">
-                                <Globe className="w-4 h-4" style={{ color: 'var(--accent)' }} />
-                                <span className="text-xs font-medium tracking-[0.1em] uppercase" style={{ color: 'var(--text-muted)' }}>
-                                    Search Origins
-                                </span>
-                            </div>
-                            <h2 className="text-2xl font-bold tracking-tight mb-3" style={{ letterSpacing: '-0.02em' }}>
-                                Where travelers are searching from
-                            </h2>
-                            <p className="text-sm leading-relaxed max-w-md" style={{ color: 'var(--text-secondary)' }}>
-                                Real-time search events from 10 major cities. Arcs show the most popular origin-destination pairs across your travel inventory.
-                            </p>
+                        <motion.div className="flex-1 text-center lg:text-left" style={{ y: textY }}>
+                            <BlurFade delay={0.15} inView>
+                                <div className="flex items-center gap-2 mb-2 justify-center lg:justify-start">
+                                    <Globe className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+                                    <span className="text-xs font-medium tracking-[0.1em] uppercase" style={{ color: 'var(--text-muted)' }}>
+                                        Search Origins
+                                    </span>
+                                </div>
+                                <h2 className="text-2xl font-bold tracking-tight mb-3" style={{ letterSpacing: '-0.02em' }}>
+                                    Where travelers are searching from
+                                </h2>
+                                <p className="text-sm leading-relaxed max-w-md" style={{ color: 'var(--text-secondary)' }}>
+                                    Real-time search events from 10 major cities. Arcs show the most popular origin-destination pairs across your travel inventory.
+                                </p>
+                            </BlurFade>
 
                             {/* Top routes mini-table */}
                             <div className="mt-6 space-y-2">
@@ -296,17 +307,17 @@ export const DashboardPage: React.FC = () => {
                                     </div>
                                 ))}
                             </div>
-                        </div>
+                        </motion.div>
 
-                        <div className="flex-shrink-0 hidden lg:block">
+                        <motion.div className="flex-shrink-0 hidden lg:block" style={{ y: globeY }}>
                             <CityGlobe size={380} />
-                        </div>
+                        </motion.div>
                     </div>
                 </ScrollReveal>
             </section>
 
             {/* Divider */}
-            <div className="w-full h-px mx-auto max-w-5xl" style={{ background: 'linear-gradient(90deg, transparent, var(--border-default), transparent)' }} />
+            <AnimatedDivider />
 
             {/* ═══════════════════════════════════════════
                 SECTION 4 — USERS AT RISK
@@ -314,7 +325,7 @@ export const DashboardPage: React.FC = () => {
             <section className="px-6 py-16 max-w-5xl mx-auto">
                 <ScrollReveal>
                     <div className="flex items-center justify-between mb-6">
-                        <div>
+                        <BlurFade delay={0.1} inView>
                             <div className="flex items-center gap-2 mb-1">
                                 <AlertTriangle className="w-4 h-4" style={{ color: 'var(--danger)' }} />
                                 <span className="text-xs font-medium tracking-[0.1em] uppercase" style={{ color: 'var(--text-muted)' }}>
@@ -324,7 +335,7 @@ export const DashboardPage: React.FC = () => {
                             <h2 className="text-2xl font-bold tracking-tight" style={{ letterSpacing: '-0.02em' }}>
                                 Users at Risk
                             </h2>
-                        </div>
+                        </BlurFade>
                         <Link
                             to="/users"
                             className="flex items-center gap-1.5 text-sm font-medium transition-colors"
@@ -355,6 +366,7 @@ export const DashboardPage: React.FC = () => {
                                         y: -2,
                                         borderColor: 'var(--border-hover)',
                                         backgroundColor: 'var(--bg-card-hover)',
+                                        boxShadow: '0 4px 20px rgba(99, 102, 241, 0.08)',
                                     }}
                                     transition={{ duration: 0.2 }}
                                 >

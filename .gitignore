@@ -128,3 +128,5 @@ coverage.xml
 .cache/
 planning/
 uv.lock
+*.png
+.playwright-mcp/

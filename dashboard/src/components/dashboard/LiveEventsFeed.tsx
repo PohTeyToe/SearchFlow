@@ -51,7 +51,7 @@ export const LiveEventsFeed: React.FC = () => {
         <div
             className="rounded-xl p-5 noise-overlay"
             style={{
-                background: 'rgba(26, 26, 26, 0.6)',
+                background: 'var(--glass-bg)',
                 backdropFilter: 'blur(16px)',
                 border: '1px solid var(--border-subtle)',
             }}

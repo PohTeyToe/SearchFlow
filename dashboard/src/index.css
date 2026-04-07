@@ -53,9 +53,9 @@ body {
 }
 
 .glass {
-  background: rgba(26, 26, 26, 0.6);
+  background: var(--glass-bg);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--glass-border);
 }
 
 .gradient-primary {

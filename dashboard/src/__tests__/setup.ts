@@ -18,6 +18,9 @@ global.IntersectionObserver = class {
   takeRecords(): IntersectionObserverEntry[] { return []; }
 } as unknown as typeof IntersectionObserver;
 
+// Mock Element.scrollIntoView (not available in jsdom, needed by cmdk)
+Element.prototype.scrollIntoView = function () {};
+
 // Mock window.matchMedia (not available in jsdom)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

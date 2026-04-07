@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useThemeStore } from './stores';
 import './index.css';
 
@@ -52,22 +53,39 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.15, ease: [0.2, 0, 0, 1] }}
+      >
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes location={location}>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/pipelines" element={<PipelinesPage />} />
+            <Route path="/metrics" element={<MetricsPage />} />
+            <Route path="/search" element={<SearchAnalyticsPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/users/:userId" element={<UserProfilePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Routes>
+        </Suspense>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <BrowserRouter>
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/pipelines" element={<PipelinesPage />} />
-              <Route path="/metrics" element={<MetricsPage />} />
-              <Route path="/search" element={<SearchAnalyticsPage />} />
-              <Route path="/users" element={<UsersPage />} />
-              <Route path="/users/:userId" element={<UserProfilePage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-            </Routes>
-          </Suspense>
+          <AnimatedRoutes />
         </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>

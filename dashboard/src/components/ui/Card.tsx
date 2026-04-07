@@ -1,5 +1,7 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { cn } from '../../utils';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 interface CardProps {
     children: React.ReactNode;
@@ -16,6 +18,9 @@ export const Card: React.FC<CardProps> = ({
     hover = false,
     onClick,
 }) => {
+    const reduced = useReducedMotion();
+    const isInteractive = hover || !!onClick;
+
     const paddings = {
         none: '',
         sm: 'p-3',
@@ -23,7 +28,7 @@ export const Card: React.FC<CardProps> = ({
         lg: 'p-6',
     };
 
-    const Component = onClick ? 'button' : 'div';
+    const Component = onClick ? motion.button : motion.div;
 
     return (
         <Component
@@ -35,6 +40,8 @@ export const Card: React.FC<CardProps> = ({
                 onClick && 'cursor-pointer',
                 className
             )}
+            whileHover={isInteractive && !reduced ? { y: -3, borderColor: 'var(--border-hover)' } : undefined}
+            transition={{ duration: 0.2 }}
         >
             {children}
         </Component>

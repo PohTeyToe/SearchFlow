@@ -14,7 +14,7 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, actions, breadc
     const { resolvedTheme, toggleTheme } = useThemeStore();
 
     return (
-        <header className="h-14 sticky top-0 z-30 flex items-center justify-between px-6 border-b border-[var(--border-subtle)]" style={{ backgroundColor: 'rgba(17, 17, 17, 0.8)', backdropFilter: 'blur(12px)' }}>
+        <header className="h-14 sticky top-0 z-30 flex items-center justify-between px-6 border-b border-[var(--border-subtle)]" style={{ backgroundColor: 'var(--header-bg)', backdropFilter: 'blur(12px)' }}>
             <div className="min-w-0">
                 {breadcrumbs && breadcrumbs.length > 0 && (
                     <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] mb-0.5">

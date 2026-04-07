@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAssistantStore } from '../../stores/assistantStore';
 import { useMediaQuery } from '../../hooks/useCustomHooks';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -29,6 +30,7 @@ export const Sidebar: React.FC = () => {
     const { sidebarCollapsed, toggleSidebar, setSidebarCollapsed } = useThemeStore();
     const { toggleCommand } = useAssistantStore();
     const isNarrow = useMediaQuery('(max-width: 1024px)');
+    const reduced = useReducedMotion();
 
     // Auto-collapse on narrow viewports
     useEffect(() => {
@@ -122,9 +124,12 @@ export const Sidebar: React.FC = () => {
 
             {/* Bottom actions */}
             <div className="p-2 border-t border-[var(--border-subtle)] space-y-0.5">
-                <button
+                <motion.button
                     onClick={toggleCommand}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] transition-all duration-150 ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
+                    whileHover={reduced ? undefined : { scale: 1.02 }}
+                    whileTap={reduced ? undefined : { scale: 0.98 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 >
                     <Sparkles className="w-[18px] h-[18px] flex-shrink-0" />
                     <AnimatePresence>
@@ -143,7 +148,7 @@ export const Sidebar: React.FC = () => {
                             </motion.div>
                         )}
                     </AnimatePresence>
-                </button>
+                </motion.button>
             </div>
         </motion.aside>
     );

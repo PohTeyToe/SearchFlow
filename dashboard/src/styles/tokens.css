@@ -1,5 +1,8 @@
+/* ═══════════════════════════════════════
+   DARK THEME (default)
+   ═══════════════════════════════════════ */
 :root {
-  /* Surfaces — hex fallbacks + oklch where supported */
+  /* Surfaces */
   --bg-canvas: #111111;
   --bg-card: #1a1a1a;
   --bg-card-hover: #222222;
@@ -16,7 +19,7 @@
   --text-secondary: #8b8b8b;
   --text-muted: #555555;
 
-  /* Accent - Indigo */
+  /* Accent */
   --accent: #6366f1;
   --accent-glow: rgba(99, 102, 241, 0.15);
   --accent-subtle: rgba(99, 102, 241, 0.08);
@@ -51,7 +54,13 @@
   --duration-normal: 200ms;
   --duration-slow: 350ms;
 
-  /* Legacy compat — old token names mapped to new */
+  /* Glass overlay for dark */
+  --glass-bg: rgba(26, 26, 26, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --header-bg: rgba(17, 17, 17, 0.8);
+  --particle-alpha: 1;
+
+  /* Legacy compat */
   --color-primary: var(--accent);
   --color-bg-primary: var(--bg-canvas);
   --color-bg-secondary: var(--bg-card);
@@ -63,9 +72,48 @@
   --color-border-hover: var(--border-hover);
 }
 
-/* OKLCH upgrade for supporting browsers */
+/* ═══════════════════════════════════════
+   LIGHT THEME
+   ═══════════════════════════════════════ */
+:root:not(.dark) {
+  --bg-canvas: #f8f9fb;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f3f4f6;
+  --bg-elevated: #ffffff;
+  --bg-sidebar: #ffffff;
+
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.10);
+  --border-hover: rgba(0, 0, 0, 0.18);
+
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+
+  --accent: #4f46e5;
+  --accent-glow: rgba(79, 70, 229, 0.12);
+  --accent-subtle: rgba(79, 70, 229, 0.06);
+
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --danger-glow: rgba(220, 38, 38, 0.12);
+
+  --chart-1: #4f46e5;
+  --chart-2: #059669;
+  --chart-3: #d97706;
+  --chart-4: #7c3aed;
+  --chart-5: #0891b2;
+
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --header-bg: rgba(248, 249, 251, 0.85);
+  --particle-alpha: 0.6;
+}
+
+/* OKLCH upgrade for dark theme in supporting browsers */
 @supports (color: oklch(0.5 0.2 270)) {
-  :root {
+  .dark {
     --bg-canvas: oklch(0.07 0 0);
     --bg-card: oklch(0.12 0 0);
     --bg-card-hover: oklch(0.15 0 0);
@@ -78,10 +126,5 @@
     --success: oklch(0.72 0.19 160);
     --warning: oklch(0.80 0.18 80);
     --danger: oklch(0.65 0.25 25);
-    --chart-1: oklch(0.65 0.25 270);
-    --chart-2: oklch(0.72 0.19 160);
-    --chart-3: oklch(0.78 0.18 80);
-    --chart-4: oklch(0.65 0.26 310);
-    --chart-5: oklch(0.70 0.20 200);
   }
 }

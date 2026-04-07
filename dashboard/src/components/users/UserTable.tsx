@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChurnBadge } from './ChurnBadge';
@@ -51,12 +51,153 @@ function getRiskBgColor(probability: number): string {
     return 'rgba(239, 68, 68, 0.1)';
 }
 
+const HoverPreviewCard: React.FC<{ user: User; topY: number }> = ({ user, topY }) => {
+    const prob = user.churnPrediction.probability;
+    const topFactors = user.churnPrediction.topFactors.slice(0, 3);
+    const maxAbsValue = Math.max(...topFactors.map(f => Math.abs(f.value)), 0.01);
+
+    return (
+        <motion.div
+            key="preview-card"
+            initial={{ opacity: 0, x: -8, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -8, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+            style={{
+                position: 'absolute',
+                right: -296,
+                top: topY - 80,
+                width: 280,
+                padding: 16,
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 12,
+                boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
+                zIndex: 50,
+                pointerEvents: 'none',
+            }}
+        >
+            {/* User ID + Segment badge */}
+            <div className="flex items-center justify-between mb-3">
+                <span
+                    className="text-sm font-mono font-semibold"
+                    style={{ color: 'var(--text-primary)' }}
+                >
+                    {user.userId}
+                </span>
+                <Badge variant={SEGMENT_VARIANTS[user.segment]} size="sm">
+                    {SEGMENT_LABELS[user.segment]}
+                </Badge>
+            </div>
+
+            {/* Churn probability bar */}
+            <div className="mb-3">
+                <div className="flex items-center justify-between mb-1">
+                    <span
+                        className="text-xs"
+                        style={{ color: 'var(--text-muted)' }}
+                    >
+                        Churn Probability
+                    </span>
+                    <span
+                        className="text-xs font-semibold"
+                        style={{ color: getRiskColor(prob) }}
+                    >
+                        {(prob * 100).toFixed(0)}%
+                    </span>
+                </div>
+                <div
+                    className="w-full h-2 rounded-full overflow-hidden"
+                    style={{ backgroundColor: getRiskBgColor(prob) }}
+                >
+                    <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
+                            width: `${prob * 100}%`,
+                            backgroundColor: getRiskColor(prob),
+                        }}
+                    />
+                </div>
+            </div>
+
+            {/* Top SHAP factors */}
+            {topFactors.length > 0 && (
+                <div className="mb-3">
+                    <span
+                        className="text-xs font-medium block mb-2"
+                        style={{ color: 'var(--text-muted)' }}
+                    >
+                        Top Factors
+                    </span>
+                    <div className="flex flex-col gap-1.5">
+                        {topFactors.map((factor) => {
+                            const barWidth = (Math.abs(factor.value) / maxAbsValue) * 100;
+                            const barColor = factor.direction === 'increases'
+                                ? 'var(--danger)'
+                                : 'var(--success)';
+                            const barBg = factor.direction === 'increases'
+                                ? 'rgba(239, 68, 68, 0.15)'
+                                : 'rgba(16, 185, 129, 0.15)';
+
+                            return (
+                                <div key={factor.feature}>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                        <span
+                                            className="text-xs truncate"
+                                            style={{
+                                                color: 'var(--text-secondary)',
+                                                maxWidth: 180,
+                                            }}
+                                        >
+                                            {factor.featureLabel}
+                                        </span>
+                                        <span
+                                            className="text-xs font-mono"
+                                            style={{ color: barColor }}
+                                        >
+                                            {factor.direction === 'increases' ? '+' : '\u2212'}
+                                            {Math.abs(factor.value).toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div
+                                        className="w-full h-1 rounded-full overflow-hidden"
+                                        style={{ backgroundColor: barBg }}
+                                    >
+                                        <div
+                                            className="h-full rounded-full"
+                                            style={{
+                                                width: `${barWidth}%`,
+                                                backgroundColor: barColor,
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* CTA */}
+            <span
+                className="text-xs font-medium"
+                style={{ color: 'var(--accent)' }}
+            >
+                Click to explore &rarr;
+            </span>
+        </motion.div>
+    );
+};
+
 export const UserTable: React.FC<UserTableProps> = ({ users }) => {
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [segmentFilter, setSegmentFilter] = useState<string>('all');
     const [sortField, setSortField] = useState<SortField>('churnProbability');
     const [sortDir, setSortDir] = useState<SortDirection>('desc');
+    const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
+    const [hoveredRowY, setHoveredRowY] = useState(0);
+    const tableContainerRef = useRef<HTMLDivElement>(null);
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -96,6 +237,11 @@ export const UserTable: React.FC<UserTableProps> = ({ users }) => {
         });
         return result;
     }, [users, search, segmentFilter, sortField, sortDir]);
+
+    const hoveredUser = useMemo(
+        () => (hoveredUserId ? filtered.find(u => u.userId === hoveredUserId) ?? null : null),
+        [hoveredUserId, filtered],
+    );
 
     const SortHeader: React.FC<{ field: SortField; children: React.ReactNode }> = ({ field, children }) => (
         <th
@@ -177,10 +323,12 @@ export const UserTable: React.FC<UserTableProps> = ({ users }) => {
 
             {/* Table container */}
             <div
+                ref={tableContainerRef}
                 className="rounded-xl overflow-hidden"
                 style={{
                     backgroundColor: 'var(--bg-card)',
                     border: '1px solid var(--border-subtle)',
+                    position: 'relative',
                 }}
             >
                 <div className="overflow-x-auto">
@@ -224,9 +372,16 @@ export const UserTable: React.FC<UserTableProps> = ({ users }) => {
                                         }}
                                         onMouseEnter={(e) => {
                                             (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-card-hover)';
+                                            setHoveredUserId(user.userId);
+                                            if (tableContainerRef.current) {
+                                                const rowRect = e.currentTarget.getBoundingClientRect();
+                                                const containerRect = tableContainerRef.current.getBoundingClientRect();
+                                                setHoveredRowY(rowRect.top - containerRect.top + rowRect.height / 2);
+                                            }
                                         }}
                                         onMouseLeave={(e) => {
                                             (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                                            setHoveredUserId(null);
                                         }}
                                     >
                                         <td
@@ -276,6 +431,17 @@ export const UserTable: React.FC<UserTableProps> = ({ users }) => {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Hover preview card */}
+                <AnimatePresence>
+                    {hoveredUser && (
+                        <HoverPreviewCard
+                            user={hoveredUser}
+                            topY={hoveredRowY}
+                        />
+                    )}
+                </AnimatePresence>
+
                 {filtered.length === 0 && (
                     <div
                         className="py-12 text-center text-sm"

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { cn } from '../../utils';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 interface TabsProps {
     defaultValue?: string;
@@ -48,7 +50,7 @@ interface TabListProps {
 export const TabList: React.FC<TabListProps> = ({ children, className }) => (
     <div
         className={cn(
-            'flex gap-1 p-1 bg-[var(--color-bg-tertiary)] rounded-lg',
+            'flex gap-1 p-1 bg-[var(--color-bg-tertiary)] rounded-lg relative',
             className
         )}
         role="tablist"
@@ -67,6 +69,7 @@ interface TabProps {
 export const Tab: React.FC<TabProps> = ({ value, children, className, disabled }) => {
     const context = React.useContext(TabsContext);
     if (!context) throw new Error('Tab must be used within Tabs');
+    const reduced = useReducedMotion();
 
     const isActive = context.activeTab === value;
 
@@ -77,14 +80,22 @@ export const Tab: React.FC<TabProps> = ({ value, children, className, disabled }
             disabled={disabled}
             onClick={() => context.setActiveTab(value)}
             className={cn(
-                'px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200',
+                'relative px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-[1]',
                 isActive
-                    ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] shadow-sm'
+                    ? 'text-[var(--color-text-primary)]'
                     : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
                 disabled && 'opacity-50 cursor-not-allowed',
                 className
             )}
         >
+            {isActive && (
+                <motion.div
+                    className="absolute inset-0 bg-[var(--color-bg-secondary)] rounded-md shadow-sm"
+                    layoutId="tab-indicator"
+                    transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 35 }}
+                    style={{ zIndex: -1 }}
+                />
+            )}
             {children}
         </button>
     );

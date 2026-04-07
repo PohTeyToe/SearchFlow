@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
@@ -23,6 +23,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     fullWidth,
 }) => {
     const { sidebarCollapsed } = useThemeStore();
+
+    useEffect(() => {
+        document.title = title
+            ? `SearchFlow — ${title}`
+            : 'SearchFlow — Travel Search Analytics Platform';
+    }, [title]);
 
     return (
         <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-canvas)' }}>

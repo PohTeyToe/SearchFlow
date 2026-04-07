@@ -77,7 +77,7 @@ export const SearchAnalyticsPage: React.FC = () => {
                             <div
                                 className="rounded-2xl p-8 noise-overlay"
                                 style={{
-                                    background: 'rgba(26, 26, 26, 0.6)',
+                                    background: 'var(--glass-bg)',
                                     backdropFilter: 'blur(16px)',
                                     border: '1px solid var(--border-subtle)',
                                     minHeight: 520,
