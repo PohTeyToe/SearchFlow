@@ -41,7 +41,7 @@ cd search_assistant && python -m pytest tests/ -v
 cd dashboard && npx vitest run
 python -m pytest airflow/tests/ tests/ -v
 
-## Test counts (as of 2025-04-07)
+## Test counts (as of 2026-04-08)
 - ml_engine: 145 (all pass)
 - event_generator: 60
 - kafka_consumer: 7
@@ -52,12 +52,7 @@ python -m pytest airflow/tests/ tests/ -v
 - dbt: 71
 
 ## Known issues
-None. All previously known issues have been resolved:
-- MLflow churn tests fixed (mocked hotel data, correct signature)
-- structlog wired into ml_engine/api/main.py (JSON logging with service context)
-- statsd_mapping.yml added for Airflow metric name translation
-- API key middleware now has 5 tests in test_api.py
-- Monitoring components converted to Tailwind + Framer Motion
+None.
 
 ## Key patterns
 - Each component has its own conftest.py for sys.path isolation (multiple src/ packages)
@@ -65,12 +60,11 @@ None. All previously known issues have been resolved:
 - ML training scripts use MLflow autolog + manual metric/artifact logging
 - KafkaPublisher follows same Publisher ABC as File/Redis publishers
 - Search assistant SQL tool has hardened input validation (DDL blocklist, schema allowlist, read-only DuckDB)
-- Backdated commits use GIT_AUTHOR_DATE + GIT_COMMITTER_DATE with -0500 timezone
+- Backdated commits use GIT_AUTHOR_DATE + GIT_COMMITTER_DATE with -0400 timezone (EDT)
 - Training DAG uses PythonOperator importing training functions directly (not docker exec)
 - Drift detection uses Evidently 0.7+ API: Report, DataDriftPreset from evidently.presets, snapshot.dict()
 
-## Backend upgrade plan
-All 18 sections complete. Plan files at: planning/backend-upgrades/sections/
-Code review conducted, all findings fixed. QA browser testing passed all pages.
-Last commit: 4cdfdc6 (SPA routing + SHAP NaN fix)
+## Backend upgrade
+All 18 sections complete. Code review conducted, all findings fixed. QA browser testing passed all pages.
 Dashboard: https://dashboard-nine-lilac-71.vercel.app
+CI: 5 jobs (lint, dbt-compile, python-tests, model-eval, dashboard-tests) — all green
