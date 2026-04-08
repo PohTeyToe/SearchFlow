@@ -76,4 +76,4 @@ Lead with: Full-stack architecture, React dashboard, FastAPI APIs, Docker infras
 ## Links
 
 - GitHub: https://github.com/PohTeyToe/SearchFlow
-- Dashboard: https://dashboard-nine-lilac-71.vercel.app
+- Dashboard: https://searchflow-app.vercel.app

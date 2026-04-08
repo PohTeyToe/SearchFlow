@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://dashboard-nine-lilac-71.vercel.app"><strong>Live Demo</strong></a> &nbsp;&middot;&nbsp;
+  <a href="https://searchflow-app.vercel.app"><strong>Live Demo</strong></a> &nbsp;&middot;&nbsp;
   <a href="https://searchflow-ml-api.onrender.com/docs">ML API</a>
 </p>
 

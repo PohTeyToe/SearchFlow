@@ -66,5 +66,5 @@ None.
 
 ## Backend upgrade
 All 18 sections complete. Code review conducted, all findings fixed. QA browser testing passed all pages.
-Dashboard: https://dashboard-nine-lilac-71.vercel.app
+Dashboard: https://searchflow-app.vercel.app
 CI: 5 jobs (lint, dbt-compile, python-tests, model-eval, dashboard-tests) — all green

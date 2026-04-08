@@ -59,7 +59,7 @@ Event Generator → Kafka 4.0 (KRaft) → Kafka Consumer → DuckDB
 
 | Service | URL | Credentials |
 |-|-|-|
-| Dashboard | https://dashboard-nine-lilac-71.vercel.app | -- |
+| Dashboard | https://searchflow-app.vercel.app | -- |
 | Airflow | http://localhost:8080 | admin/admin |
 | ML Engine | http://localhost:8000 | -- |
 | Grafana | http://localhost:3001 | admin/admin |
